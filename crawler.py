@@ -1,8 +1,9 @@
 import requests as req
 from bs4 import BeautifulSoup
+from article import Article
 
 #params passed to esearch
-payload = {'db':'pubmed', 'term':'ageing OR longevity', 'retmax':100}
+payload = {'db':'pubmed', 'term':'ageing OR longevity', 'retmax':10}
 
 #esearch
 print('--> Searching Pubmed')
@@ -19,11 +20,7 @@ while Id != None:
     idlist.append(int(Id.text))
     Id = Id.find_next('Id')
 
-
 f = open('articles.json','w')
-
-def write_line(f, line):
-    return f.write('{\"index\":{\"_id\":\"'+str(line[0])+'\"}}\n'+'{\"PMID\":'+str(line[0])+',\"Title\":\"'+str(line[1])+'\",\"Abstract\":\"'+str(line[2]).replace('\n',' ').replace('"',' ')+'\"}\n')
 
 print('--> Retrieving abstratcs and titles')
 for i in range(len(idlist)):
@@ -37,14 +34,8 @@ for i in range(len(idlist)):
     #parsing
     soup = BeautifulSoup(r.text, "xml")
 
-    if soup.Abstract != None:
-        line = [soup.PMID.text, soup.ArticleTitle.text, soup.Abstract.text]
-    else:
-        line = [soup.PMID.text, soup.ArticleTitle.text, 'Abstract not avaliable']
-    write_line(f, line)
-
-
-
-
+    art = Article(soup)
+    
+    f.write(art.json_line())
 
 
