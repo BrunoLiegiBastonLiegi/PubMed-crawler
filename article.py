@@ -17,7 +17,11 @@ class Article(object):
         return self.id
 
     def get_title(self):
-        self.title = self.soup.ArticleTitle.text.replace('"','\'')
+        tmp = self.soup.ArticleTitle
+        if tmp != None:
+            self.title = tmp.text.replace('"','\'')
+        else:
+            self.title = self.soup.BookTitle.text.replace('"','\'')
         return self.title
 
     def get_keywords(self):
@@ -42,7 +46,11 @@ class Article(object):
         return self.abstract
 
     def get_journal(self):
-        self.journal = self.soup.Journal.Title.text
+        tmp = self.soup.Journal
+        if tmp != None:
+            self.journal = tmp.Title.text
+        else:
+            self.journal = self.soup.BookTitle.text
         return self.journal
 
     def get_date(self):
