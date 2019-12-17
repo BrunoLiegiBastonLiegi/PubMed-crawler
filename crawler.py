@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 from article import Article
 
 #params passed to esearch
-payload = {'db':'pubmed', 'term':'ageing OR longevity', 'retmax':10}
+payload = {'db':'pubmed', 'term':'ageing OR longevity', 'retmax':1000}
 
 #esearch
 print('--> Searching Pubmed')
@@ -22,20 +22,25 @@ while Id != None:
 
 f = open('articles.json','w')
 
-print('--> Retrieving abstratcs and titles')
-for i in range(len(idlist)):
+niter = len(idlist)
+print('--> Retrieving articles')
+for i in range(niter):
     
     #params passed to efetch
     payload = {'db':'pubmed', 'id':idlist[i], 'retmode':'xml'}
 
     #efetch
     r = req.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi', params=payload)
-
+    print('\t\t', r.url, '\r', end='')
+    
     #parsing
     soup = BeautifulSoup(r.text, "xml")
 
     art = Article(soup)
+
+    print('(', i+1, '/', niter, ')\r', end='')
     
     f.write(art.json_line())
 
 
+print('')
