@@ -19,9 +19,9 @@ class Article(object):
     def get_title(self):
         tmp = self.soup.ArticleTitle
         if tmp != None:
-            self.title = tmp.text.replace('"','\'')
+            self.title = tmp.text.replace('"','\'').replace('\n',' ')
         else:
-            self.title = self.soup.BookTitle.text.replace('"','\'')
+            self.title = self.soup.BookTitle.text.replace('"','\'').replace('\n',' ').replace('\\','')
         return self.title
 
     def get_keywords(self):
@@ -42,7 +42,7 @@ class Article(object):
             lenght = len(tmp)
             for i in range(lenght):
                 tmp[i] = str(tmp[i]) 
-            self.abstract = ' '.join(tmp[1:lenght-1]).replace('"','\'').replace('\n',' ')
+            self.abstract = ' '.join(tmp[1:lenght-1]).replace('"','\'').replace('\n',' ').replace('\\','')
         return self.abstract
 
     def get_journal(self):
