@@ -19,7 +19,7 @@ class Article(object):
     def get_title(self):
         tmp = self.soup.ArticleTitle
         if tmp != None:
-            self.title = tmp.text.replace('"','\'').replace('\n',' ')
+            self.title = tmp.text.replace('"','\'').replace('\n',' ').replace('\\','')
         else:
             self.title = self.soup.BookTitle.text.replace('"','\'').replace('\n',' ').replace('\\','')
         return self.title
@@ -30,7 +30,7 @@ class Article(object):
             self.keys = 'Not avaliable'
         else:
             tmp = tmp.text
-            self.keys = tmp[1:len(tmp)-1].replace('\n',', ')
+            self.keys = tmp[1:len(tmp)-1].replace('\n',', ').replace('"','\'')
         return self.keys
 
     def get_abstract(self):
@@ -48,9 +48,9 @@ class Article(object):
     def get_journal(self):
         tmp = self.soup.Journal
         if tmp != None:
-            self.journal = tmp.Title.text
+            self.journal = tmp.Title.text.replace('\n',' ')
         else:
-            self.journal = self.soup.BookTitle.text
+            self.journal = self.soup.BookTitle.text.replace('\n',' ')
         return self.journal
 
     def get_date(self):
