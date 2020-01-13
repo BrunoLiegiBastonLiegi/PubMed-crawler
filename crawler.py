@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 from article import Article
 
 #params passed to esearch
-payload = {'db':'pubmed', 'term':'ageing OR longevity', 'retmax':10000}
+payload = {'db':'pubmed', 'term':'ageing OR longevity', 'retmax':1235}
 
 #esearch
 print('--> Searching Pubmed')
@@ -22,7 +22,7 @@ while Id != None:
 
 f = open('json/articles.json','w')
 
-batchsize = 1000
+batchsize = 100
 niter = int(len(idlist)/batchsize)
 rest = len(idlist)%batchsize
 
