@@ -1,10 +1,10 @@
 import requests as req
 from bs4 import BeautifulSoup
 from article import Article
-from multiprocessing import Process, Value, Lock, current_process, Queue, Array
+from multiprocessing import Process, Value, Lock
 
 #params passed to esearch
-payload = {'db':'pubmed', 'term':'ageing OR longevity', 'retmax':1000}
+payload = {'db':'pubmed', 'term':'ageing OR longevity', 'retmax':100000}
 
 #esearch
 print('--> Searching Pubmed')
@@ -24,7 +24,7 @@ while Id != None:
 
 
 
-def worker(index, lock, articles):
+def worker(index, lock, f):
 
     lock.acquire()
     ind = index.value
@@ -49,18 +49,22 @@ def worker(index, lock, articles):
 
     for j in soup:
         art = Article(j)
-        articles.put(art.json_line())
+        lock.acquire()
+        f.write(art.json_line())
+        lock.release()
+        
 
 
 
-
-batchsize = 100
+batchsize = 1000
 nproc = 2
+f = open('json/articles.json','w')
+
+
 
 if __name__ == '__main__':
 
     lock = Lock()
-    articles = Queue()
     index = Value('i', 0)
     
     print('--> Retrieving articles')
@@ -69,13 +73,15 @@ if __name__ == '__main__':
         jobs = []
         
         for i in range(nproc):
-            p = Process(target=worker, args=(index, lock, articles))
+            p = Process(target=worker, args=(index, lock, f))
             jobs.append(p)
             p.start()
+
+        #while not articles.empty():
+            #f.write(articles.get())
             
         for proc in jobs:
             proc.join()
-
         
     print('(', len(idlist), '/', len(idlist), ')\r', end='')
     
@@ -83,6 +89,4 @@ if __name__ == '__main__':
 
 
 
-f = open('json/articles.json','w')
-for a in articles:
-    f.write(a)
+
