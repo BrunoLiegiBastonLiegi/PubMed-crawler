@@ -1,17 +1,10 @@
 import requests as req
 from bs4 import BeautifulSoup
 from article import Article
-<<<<<<< HEAD
 from multiprocessing import Process, Value, Lock
 
 #params passed to esearch
 payload = {'db':'pubmed', 'term':'ageing OR longevity', 'retmax':100000}
-=======
-from multiprocessing import Process, Value, Lock, current_process, Queue, Array
-
-#params passed to esearch
-payload = {'db':'pubmed', 'term':'ageing OR longevity', 'retmax':1000}
->>>>>>> 91a65eb5fd5802895c12e3b04627429d5a783edb
 
 #esearch
 print('--> Searching Pubmed')
@@ -31,11 +24,7 @@ while Id != None:
 
 
 
-<<<<<<< HEAD
 def worker(index, lock, f):
-=======
-def worker(index, lock, articles):
->>>>>>> 91a65eb5fd5802895c12e3b04627429d5a783edb
 
     lock.acquire()
     ind = index.value
@@ -60,7 +49,6 @@ def worker(index, lock, articles):
 
     for j in soup:
         art = Article(j)
-<<<<<<< HEAD
         lock.acquire()
         f.write(art.json_line())
         lock.release()
@@ -73,23 +61,10 @@ nproc = 2
 f = open('json/articles.json','w')
 
 
-=======
-        articles.put(art.json_line())
-
-
-
-
-batchsize = 100
-nproc = 2
->>>>>>> 91a65eb5fd5802895c12e3b04627429d5a783edb
 
 if __name__ == '__main__':
 
     lock = Lock()
-<<<<<<< HEAD
-=======
-    articles = Queue()
->>>>>>> 91a65eb5fd5802895c12e3b04627429d5a783edb
     index = Value('i', 0)
     
     print('--> Retrieving articles')
@@ -98,7 +73,6 @@ if __name__ == '__main__':
         jobs = []
         
         for i in range(nproc):
-<<<<<<< HEAD
             p = Process(target=worker, args=(index, lock, f))
             jobs.append(p)
             p.start()
@@ -108,15 +82,6 @@ if __name__ == '__main__':
             
         for proc in jobs:
             proc.join()
-=======
-            p = Process(target=worker, args=(index, lock, articles))
-            jobs.append(p)
-            p.start()
-            
-        for proc in jobs:
-            proc.join()
-
->>>>>>> 91a65eb5fd5802895c12e3b04627429d5a783edb
         
     print('(', len(idlist), '/', len(idlist), ')\r', end='')
     
@@ -124,10 +89,4 @@ if __name__ == '__main__':
 
 
 
-<<<<<<< HEAD
 
-=======
-f = open('json/articles.json','w')
-for a in articles:
-    f.write(a)
->>>>>>> 91a65eb5fd5802895c12e3b04627429d5a783edb
