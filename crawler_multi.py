@@ -4,7 +4,7 @@ from article import Article
 from multiprocessing import Process, Value, Lock
 
 #params passed to esearch
-payload = {'db':'pubmed', 'term':'ageing OR longevity', 'retmax':100000}
+payload = {'db':'pubmed', 'term':'cancer OR smoke', 'retmax':100000}
 
 #esearch
 print('--> Searching Pubmed')
@@ -29,17 +29,19 @@ def worker(index, lock, f):
     lock.acquire()
     ind = index.value
     if ind == len(idlist):
+        lock.release()
         return
     else:
         if ind+batchsize < len(idlist):
             print('(', ind, '/', len(idlist), ')\r', end='')
             index.value += batchsize
+            lock.release()
             payload = {'db':'pubmed', 'id':idlist[ind:index.value], 'retmode':'xml'}
         else:
-            print('(', ind, '/', len(idlist), ')\r', end='')
+            print('(', ind, '/', len(idlist), ')\r', end='') 
             index.value = len(idlist)
+            lock.release()
             payload = {'db':'pubmed', 'id':idlist[ind:], 'retmode':'xml'}
-    lock.release()
         
     #efetch
     r = req.post('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi', data=payload)
@@ -57,7 +59,7 @@ def worker(index, lock, f):
 
 
 batchsize = 1000
-nproc = 2
+nproc = 3
 f = open('json/articles.json','w')
 
 
@@ -77,11 +79,9 @@ if __name__ == '__main__':
             jobs.append(p)
             p.start()
 
-        #while not articles.empty():
-            #f.write(articles.get())
-            
         for proc in jobs:
             proc.join()
+
         
     print('(', len(idlist), '/', len(idlist), ')\r', end='')
     
