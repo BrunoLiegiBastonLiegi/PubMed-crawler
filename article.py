@@ -30,7 +30,7 @@ class Article(object):
             self.keys = 'Not avaliable'
         else:
             tmp = tmp.text
-            self.keys = tmp[1:len(tmp)-1].replace('\n',', ').replace('"','\'')
+            self.keys = tmp[1:len(tmp)-1].replace('\n',', ').replace('"','\'').replace('\t', '').replace('\\','')
         return self.keys
 
     def get_abstract(self):
