@@ -3,24 +3,37 @@ from bs4 import BeautifulSoup
 from article import Article
 from multiprocessing import Process, Value, Lock
 
-#params passed to esearch
-payload = {'db':'pubmed', 'term':'cancer OR smoke', 'retmax':100000}
 
-#esearch
-print('--> Searching Pubmed')
-r = req.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi', params=payload)
-
-#parsing Ids
-print('--> Retrieving Ids')
-soup = BeautifulSoup(r.text, "xml")
-Id = soup.Id
-
+retstart = 0
+retmax = 100000
 idlist = []
 
-while Id != None:
-    idlist.append(int(Id.text))
-    Id = Id.find_next('Id')
+print('--> Searching Pubmed')
 
+while True:
+
+    #params passed to esearch
+    payload = {'db':'pubmed', 'term':'diabetes', 'retmax':retmax, 'retstart':retstart}
+
+    #esearch
+    r = req.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi', params=payload)
+
+    #parsing Ids
+    soup = BeautifulSoup(r.text, "xml")
+    
+    Id = soup.Id
+    if Id == None:
+        break
+    
+    while Id != None:
+        idlist.append(int(Id.text))
+        Id = Id.find_next('Id')
+
+    retmax = int(soup.RetMax.text)
+    retstart += retmax
+
+    
+print(len(idlist), 'articles found')
 
 
 
@@ -28,28 +41,29 @@ def worker(index, lock, f):
 
     lock.acquire()
     ind = index.value
-    if ind == len(idlist):
+    if ind+batchsize < len(idlist):
+        print('(', ind, '/', len(idlist), ')\r', end='')
+        index.value += batchsize
         lock.release()
-        return
+        payload = {'db':'pubmed', 'id':idlist[ind:index.value], 'retmode':'xml'}
     else:
-        if ind+batchsize < len(idlist):
-            print('(', ind, '/', len(idlist), ')\r', end='')
-            index.value += batchsize
-            lock.release()
-            payload = {'db':'pubmed', 'id':idlist[ind:index.value], 'retmode':'xml'}
-        else:
+        if ind < len(idlist):
             print('(', ind, '/', len(idlist), ')\r', end='') 
             index.value = len(idlist)
             lock.release()
             payload = {'db':'pubmed', 'id':idlist[ind:], 'retmode':'xml'}
-        
+        else:
+            lock.release()
+            return
+
     #efetch
     r = req.post('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi', data=payload)
-    
+        
     #parsing
-    soup = list(BeautifulSoup(r.text, "xml").PubmedArticleSet.children)[1::2]
+    soup = BeautifulSoup(r.text, "xml").PubmedArticleSet    
+    children = list(soup.children)[1::2]
 
-    for j in soup:
+    for j in children:
         art = Article(j)
         lock.acquire()
         f.write(art.json_line())

@@ -42,15 +42,15 @@ class Article(object):
             lenght = len(tmp)
             for i in range(lenght):
                 tmp[i] = str(tmp[i]) 
-            self.abstract = ' '.join(tmp[1:lenght-1]).replace('"','\'').replace('\n',' ').replace('\\','')
+            self.abstract = ' '.join(tmp[1:lenght-1]).replace('"','\'').replace('\n',' ').replace('\\','').replace('\t', '')
         return self.abstract
 
     def get_journal(self):
         tmp = self.soup.Journal
         if tmp != None:
-            self.journal = tmp.Title.text.replace('\n',' ')
+            self.journal = tmp.Title.text.replace('\n',' ').replace('"','\'')
         else:
-            self.journal = self.soup.BookTitle.text.replace('\n',' ')
+            self.journal = self.soup.BookTitle.text.replace('\n',' ').replace('"','\'')
         return self.journal
 
     def get_date(self):
