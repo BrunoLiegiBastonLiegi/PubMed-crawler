@@ -1,7 +1,8 @@
 import requests as req
 from bs4 import BeautifulSoup
 from article import Article
-from multiprocessing import Process, Value, Lock
+from multiprocessing import Process, Value, Lock, cpu_count
+import time
 
 
 retstart = 0
@@ -13,7 +14,7 @@ print('--> Searching Pubmed')
 while True:
 
     #params passed to esearch
-    payload = {'db':'pubmed', 'term':'diabetes', 'retmax':retmax, 'retstart':retstart}
+    payload = {'db':'pubmed', 'term':'smoke AND cancer', 'retmax':retmax, 'retstart':retstart}
 
     #esearch
     r = req.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi', params=payload)
@@ -56,11 +57,15 @@ def worker(index, lock, f):
             lock.release()
             return
 
-    #efetch
-    r = req.post('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi', data=payload)
+    soup = None
+    while soup == None:
+        #efetch
+        r = req.post('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi', data=payload)
+        #parsing
+        soup = BeautifulSoup(r.text, "xml").PubmedArticleSet
+        if soup == None:
+            time.sleep(1)
         
-    #parsing
-    soup = BeautifulSoup(r.text, "xml").PubmedArticleSet    
     children = list(soup.children)[1::2]
 
     for j in children:
@@ -73,7 +78,7 @@ def worker(index, lock, f):
 
 
 batchsize = 1000
-nproc = 3
+nproc = cpu_count()
 f = open('json/articles.json','w')
 
 
