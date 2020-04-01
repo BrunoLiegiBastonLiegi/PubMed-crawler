@@ -19,9 +19,9 @@ class Article(object):
     def get_title(self):
         tmp = self.soup.ArticleTitle
         if tmp != None:
-            self.title = tmp.text.replace('"','\'').replace('\n',' ').replace('\\','')
+            self.title = tmp.text.replace('"','\'').replace('\n',' ').replace('\\','').replace('&',' and ').replace('<', ' lower than ').replace('>', ' greater than ').replace(u'\xa0',u'')
         else:
-            self.title = self.soup.BookTitle.text.replace('"','\'').replace('\n',' ').replace('\\','')
+            self.title = self.soup.BookTitle.text.replace('"','\'').replace('\n',' ').replace('\\','').replace('&',' and ').replace('<', ' lower than ').replace('>', ' greater than ').replace(u'\xa0',u'')
         return self.title
 
     def get_keywords(self):
@@ -30,7 +30,7 @@ class Article(object):
             self.keys = 'Not avaliable'
         else:
             tmp = tmp.text
-            self.keys = tmp[1:len(tmp)-1].replace('\n',', ').replace('"','\'').replace('\t', '').replace('\\','')
+            self.keys = tmp[1:len(tmp)-1].replace('\n',', ').replace('"','\'').replace('\t', '').replace('\\','').replace('&',' and ').replace('<','').replace('>','')
         return self.keys
 
     def get_abstract(self):
@@ -38,11 +38,13 @@ class Article(object):
         if(tmp == None):
             self.abstract = 'Not avaliable'
         else:
-            tmp = tmp.contents
-            lenght = len(tmp)
-            for i in range(lenght):
-                tmp[i] = str(tmp[i]) 
-            self.abstract = ' '.join(tmp[1:lenght-1]).replace('"','\'').replace('\n',' ').replace('\\','').replace('\t', '')
+            #tmp = tmp.contents
+            tmp = tmp.text
+            #length = len(tmp)
+            #for i in range(length):
+                #tmp[i] = str(tmp[i]) 
+            #self.abstract = ' '.join(tmp[1:lenght-1]).replace('"','\'').replace('\n',' ').replace('\\','').replace('\t', '')
+            self.abstract = tmp.replace('"','\'').replace('\n',' ').replace('\\','').replace('\t', '').replace('<', ' lower than ').replace('>', ' greater than ').replace('&',' and ').replace(u'\xa0',u'')
         return self.abstract
 
     def get_journal(self):
@@ -70,6 +72,16 @@ class Article(object):
             self.date = str(tmp.MedlineDate.text)
         return self.date
     
+
+    def line(self, format='xml'):
+        return (self.xml_line(), self.json_line())
+
+    def xml_line(self):
+        line = '<article><title>' + str(self.title) + '</title>'
+        line += '<abstract>' + str(self.abstract) + '</abstract>'
+        line += '<keywords>' + str(self.keys) + '</keywords></article>'
+        return line
+        
     def json_line(self):
         line = '{\"index\":{\"_id\":\"'
         line = line + str(self.id) + '\"}}\n'                              # elasticsearch index
@@ -80,4 +92,5 @@ class Article(object):
         line = line + '\",\"Keywords\":\"' + str(self.keys)                # keywords
         line = line + '\",\"Abstract\":\"' + str(self.abstract) + '\"}\n'  # abstract
         return line
-
+        
+            
