@@ -23,24 +23,25 @@ with open('predicates.xml') as f:
                 obj = sent.find(id=predication.Object['entityID'])
                 dict = {}
                 try:
-                    s = subj['name'].replace(' ', '\n')
+                    s = subj['name'].replace(':','')
                 except:
-                    s = subj['entrezName'].replace(' ', '\n')
+                    s = subj['entrezName'].replace(':','')
                 try:
-                    o = [obj['name'].replace(' ', '\n')]
+                    o = [obj['name'].replace(':','')]
                 except:
-                    o = [obj['entrezName'].replace(' ', '\n')]
+                    o = [obj['entrezName'].replace(':','')]
                 preds.append(Vertex(s, [pred], o))
         i += 1
         print(i, '/', len(soup), '\r', end='')
 
 print('\n', len(preds), ' causal predications found')
 
-
+    
 g = Graph(vertices=preds)
-g.redundancy_filter(k=1)
-model = Word2Vec.load('../word-embedding/models/word2vec_window=6_size=300_min_count=7_iter=20.model')
-g.word_embedding_filter(model, 'virus')
+g.redundancy_filter(k=2)
+#g.merge_vertices(g.v_mapping['Disease'], g.v_mapping['Virus Diseases'])
+#model = Word2Vec.load('../word-embedding/models/word2vec_window=6_size=300_min_count=7_iter=20.model')
+#g.word_embedding_filter(model, 'virus')
 g.draw()
 
 
