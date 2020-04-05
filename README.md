@@ -54,7 +54,8 @@ and generates the `predicates.xml` file containing all the predications found by
 `causal_graph.py` then parses the predications file generated and extracts all the subject-predicate-object tuples. From them selects only the causal ones and build the graph using the `Graph` object implemented in `graph.py`, based on the python module [graph_tool](https://graph-tool.skewed.de/).
 
 Here an example about covid-19
-<img src="causal_graph/graph_example.png" width="500">
+
+<img src="causal_graph/graph_example.png" width="900">
 
 ### Requirements
 
