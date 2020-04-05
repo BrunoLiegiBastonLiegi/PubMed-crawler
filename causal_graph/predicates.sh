@@ -9,6 +9,7 @@ start=1
 lines="$(wc --lines $file | egrep -o '[0-9]*\s')"
 
 find . -name predicates.xml -exec rm -i {} \;
+find . -name commands.txt -exec rm {} \;
 mkdir .out
 
 while true
