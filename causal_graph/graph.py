@@ -67,7 +67,7 @@ class Graph(object):
         
     def add_edge(self, edge, gt_v1, gt_v2, dir='straight'):
         assert dir in {'straight', 'inverted', 'bi'}, 'Unsupported edge direction'
-        if dir == 'bi':
+        if edge == 'bi':
             e = self.g.add_edge(gt_v1, gt_v2)
             self.edges_text[e] = edge
             e = self.g.add_edge(gt_v2, gt_v1)
@@ -128,6 +128,23 @@ class Graph(object):
                 causal_map[e] = False
         self.g.set_edge_filter(causal_map)
         self.clean()
+
+    def co_occurrence(self, threshold):
+        co_map = self.g.new_edge_property("bool")
+        for v in self.g.vertices():
+            for n in v.out_neighbors():
+                edges = self.g.edge(v, n, all_edges=True)
+                print(float(len(edges)/(self.g.get_total_degrees([v])[0] + self.g.get_total_degrees([n])[0])))
+                if float(len(edges)/(self.g.get_total_degrees([v])[0] + self.g.get_total_degrees([n])[0])) > threshold:
+                    for e in edges:
+                        co_map[e] = True
+                else:
+                    for e in edges:
+                        co_map[e] = False
+                        
+        self.g.set_edge_filter(co_map)
+        self.clean()
+        
 
     def merge_vertices(self, v1, v2):         # not working, why??????
         del_list = []
