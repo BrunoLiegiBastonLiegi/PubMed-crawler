@@ -3,10 +3,7 @@
 Python project for retrieval and processing of medical articles from the PubMed database.
 
 ## Retrieving articles and storing locally
-<<<<<<< HEAD
 
-=======
->>>>>>> d005c97f95e3b71100d24de8d6461c327727e80a
 The script `crawler.py` makes use of the [Entrez utilities](https://www.ncbi.nlm.nih.gov/books/NBK25501/) to perform a query to the PubMed database, with query keyword defined inside. For each article found is allocated an `Article` object, defined in `article.py`, that collects: abstract, title, author, date, journal and keywords list.
 
 The results then are stored both in xml format (`DATA/xml/`), and json format (`elasticsearch/json/`) for indexing with [Elasticsearch](https://www.elastic.co/elasticsearch/?ultron=[EL]-[B]-[EMEA-General]-Exact&blade=adwords-s&Device=c&thor=elasticsearch&gclid=CjwKCAjw4KD0BRBUEiwA7MFNTRoenvM2EUFuTKmBWXtWcutsi3sMsud182ucINUSKZe240O-kl9WwRoCRG8QAvD_BwE). The task is parallelized across the available threads using python `multiprocessing` module.
