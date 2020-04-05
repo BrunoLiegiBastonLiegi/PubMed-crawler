@@ -18,7 +18,7 @@ with open('predicates.xml') as f:
         predication = sent.Predication
         if predication != None:
             pred = predication.Predicate['type']
-            if pred in causePredicates or pred in twoDirectionalPredicates:
+            if True:#pred in causePredicates or pred in twoDirectionalPredicates:
                 subj = sent.find(id=predication.Subject['entityID'])
                 obj = sent.find(id=predication.Object['entityID'])
                 dict = {}
@@ -34,10 +34,11 @@ with open('predicates.xml') as f:
         i += 1
         print(i, '/', len(soup), '\r', end='')
 
-print('\n', len(preds), ' causal predications found')
+print('\n', len(preds), ' predications found')
 
     
 g = Graph(vertices=preds)
+g.causal()
 g.redundancy_filter(k=2)
 #g.merge_vertices(g.v_mapping['Disease'], g.v_mapping['Virus Diseases'])
 #model = Word2Vec.load('../word-embedding/models/word2vec_window=6_size=300_min_count=7_iter=20.model')

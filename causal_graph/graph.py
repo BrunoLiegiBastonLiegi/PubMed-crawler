@@ -39,6 +39,8 @@ class Graph(object):
         self.verts_text = self.g.new_vertex_property("string")
         self.edges_text = self.g.new_edge_property("string")
         self.v_mapping = {}
+        self.causal_preds = ['CAUSES','PREVENTS','DISRUPTS','INHIBITS','PREDISPOSES','PRODUCES']
+        self.bidir_preds = ['COEXISTS_WITH','ASSOCIATED_WITH']
         if vertices!=None:
             [self.add_vertex(v) for v in vertices]
 
@@ -64,10 +66,18 @@ class Graph(object):
         
         
     def add_edge(self, edge, gt_v1, gt_v2, dir='straight'):
-        assert dir in {'straight', 'inverted', 'bi'}, 'Unsupported edge direction'        
-        e = self.g.add_edge(gt_v1, gt_v2)
-        self.edges_text[e] = edge
-        return e
+        assert dir in {'straight', 'inverted', 'bi'}, 'Unsupported edge direction'
+        if dir == 'bi':
+            e = self.g.add_edge(gt_v1, gt_v2)
+            self.edges_text[e] = edge
+            e = self.g.add_edge(gt_v2, gt_v1)
+            self.edges_text[e] = edge
+        else:
+            if dir == 'straight':
+                e = self.g.add_edge(gt_v1, gt_v2)
+            elif dir == 'inverted':
+                e = self.g.add_edge(gt_v2, gt_v1)
+            self.edges_text[e] = edge
 
     def adjacency_list(self):
         dict = {}
@@ -77,6 +87,13 @@ class Graph(object):
                 dict[v].append(n)
         return dict
 
+    def clean(self):
+        v_list = []
+        for v in self.g.vertices():
+            if v.out_degree() + v.in_degree() < 1:
+                v_list.append(v)
+        self.g.remove_vertex(v_list)
+    
     def redundancy_filter(self, k=2):
         redundancy_map = self.g.new_edge_property("bool") # have to use filtering cause removal was causing core dumped
         for v in self.g.vertices():
@@ -90,19 +107,7 @@ class Graph(object):
                         redundancy_map[e] = True
                 
         self.g.set_edge_filter(redundancy_map)
-
-        #clean_map = self.g.new_vertex_property("bool")
-        v_list = []
-        for v in self.g.vertices():
-            if v.out_degree() + v.in_degree() < 1:
-                #clean_map[v] = False
-                v_list.append(v)
-            '''
-            else:
-                clean_map[v] = True
-            '''
-        
-        self.g.remove_vertex(v_list)
+        self.clean()
 
     def word_embedding_filter(self, model, target):
         embedding_map = self.g.new_vertex_property("bool")
@@ -113,6 +118,16 @@ class Graph(object):
                 embedding_map[v] = True
             else:
                 embedding_map[v] = False
+
+    def causal(self):
+        causal_map = self.g.new_edge_property("bool")
+        for e in self.g.edges():
+            if self.edges_text[e] in self.causal_preds or self.edges_text[e] in self.bidir_preds:
+                causal_map[e] = True
+            else:
+                causal_map[e] = False
+        self.g.set_edge_filter(causal_map)
+        self.clean()
 
     def merge_vertices(self, v1, v2):         # not working, why??????
         del_list = []
@@ -142,9 +157,9 @@ class Graph(object):
             'marker_size':12,
         }
         
-        #graph_draw(self.g, vprops=vprops, eprops=eprops, output_size=(2000, 2000))
+        graph_draw(self.g, vprops=vprops, eprops=eprops, output_size=(2000, 2000))
         #graphviz_draw(self.g, layout='sfdp', vprops=vprops, eprops=eprops, size=(25,25))
-        
+        '''
         dot = Digraph(comment='Test')
         for v in self.g.vertices():
             dot.node(self.verts_text[v])
@@ -152,4 +167,4 @@ class Graph(object):
                 dot.edge(self.verts_text[v],self.verts_text[n])
 
         dot.render(view=True)
-        
+        '''
