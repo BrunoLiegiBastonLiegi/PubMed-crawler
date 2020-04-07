@@ -94,7 +94,7 @@ class Graph(object):
                 v_list.append(v)
         self.g.remove_vertex(v_list)
     
-    def redundancy_filter(self, k=2):
+    def redundancy(self, k=2):
         redundancy_map = self.g.new_edge_property("bool") # have to use filtering cause removal was causing core dumped
         for v in self.g.vertices():
             for n in v.out_neighbors():
@@ -109,7 +109,7 @@ class Graph(object):
         self.g.set_edge_filter(redundancy_map)
         self.clean()
 
-    def word_embedding_filter(self, model, target):
+    def word_embedding(self, model, target):
         embedding_map = self.g.new_vertex_property("bool")
         WORD = re.compile(r'\w+')
         for v in self.g.vertices():
@@ -118,6 +118,18 @@ class Graph(object):
                 embedding_map[v] = True
             else:
                 embedding_map[v] = False
+
+    def filter_by(self, method, **kwargs):
+        assert method in ['causal','co-occurrence','word_embedding','redundancy'], 'Unsupported pruning method'
+        if method == 'causal':
+            return self.causal()
+        if method == 'co-occurrence':
+            return self.co_occurrence(**kwargs)
+        if method == 'word_embedding':
+            return self.word_embedding(**kwargs)
+        if method == 'redundancy':
+            return self.redundancy(**kwargs)
+            
 
     def causal(self):
         causal_map = self.g.new_edge_property("bool")
