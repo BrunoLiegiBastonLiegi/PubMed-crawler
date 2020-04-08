@@ -98,15 +98,21 @@ class Graph(object):
     def redundancy(self, k=2):
         redundancy_map = self.g.new_edge_property("bool") # have to use filtering cause removal was causing core dumped
         for v in self.g.vertices():
-            for n in v.out_neighbors():
-                edges = self.g.edge(v, n, all_edges=True)
-                if len(edges) < k:
-                    for e in edges:
-                        redundancy_map[e] = False                
+            dict = {}
+            for e in v.out_edges():
+                t = e.target()
+                try:
+                    dict[self.verts_text[t]].append(e)
+                except:
+                    dict[self.verts_text[t]] = [e]
+            for i in dict.values():
+                if len(i) < k:
+                    for j in i:
+                        redundancy_map[j] = False
                 else:
-                    for e in edges:
-                        redundancy_map[e] = True
-                
+                    for j in i:
+                        redundancy_map[j] = True
+                        
         self.g.set_edge_filter(redundancy_map)
         self.clean()
 
