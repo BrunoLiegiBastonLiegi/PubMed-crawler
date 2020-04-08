@@ -62,12 +62,13 @@ class Graph(object):
                 #self.verts_text[v_f[-1]] = n
                 self.verts_text[self.v_mapping[n]] = n
                 
-        e = [self.add_edge(vertex.edges[j], v_i, v_f[j]) for j in range(len(vertex.edges))]
-        
+        #e = [self.add_edge(vertex.edges[j], v_i, v_f[j]) for j in range(len(vertex.edges))]
+        for j in range(len(vertex.edges)):
+            self.add_edge(vertex.edges[j], v_i, v_f[j], dir='bi') if vertex.edges[j] in self.bidir_preds else self.add_edge(vertex.edges[j], v_i, v_f[j])
         
     def add_edge(self, edge, gt_v1, gt_v2, dir='straight'):
         assert dir in {'straight', 'inverted', 'bi'}, 'Unsupported edge direction'
-        if edge == 'bi':
+        if dir == 'bi':
             e = self.g.add_edge(gt_v1, gt_v2)
             self.edges_text[e] = edge
             e = self.g.add_edge(gt_v2, gt_v1)
@@ -146,7 +147,7 @@ class Graph(object):
         for v in self.g.vertices():
             for n in v.out_neighbors():
                 edges = self.g.edge(v, n, all_edges=True)
-                print(float(len(edges)/(self.g.get_total_degrees([v])[0] + self.g.get_total_degrees([n])[0])))
+                #print(float(len(edges)/(self.g.get_total_degrees([v])[0] + self.g.get_total_degrees([n])[0])))
                 if float(len(edges)/(self.g.get_total_degrees([v])[0] + self.g.get_total_degrees([n])[0])) > threshold:
                     for e in edges:
                         co_map[e] = True
