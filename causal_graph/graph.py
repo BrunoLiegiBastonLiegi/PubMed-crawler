@@ -28,9 +28,12 @@ class Edge:
 '''
 
 import graph_tool as gt
-from graph_tool.all import graph_draw, graphviz_draw
-import re
-from graphviz import Digraph
+from graph_tool.all import graph_draw, graphviz_draw, minimize_blockmodel_dl, fruchterman_reingold_layout, arf_layout
+import re, random
+import numpy as np
+from keras.preprocessing.sequence import skipgrams, make_sampling_table
+from keras.layers import Embedding
+#from graphviz import Digraph
 
 class Graph(object):
 
@@ -163,8 +166,63 @@ class Graph(object):
                         
         self.g.set_edge_filter(co_map)
         self.clean()
+
+    def random_walk(self, v=None, length=5):
+        if v == None:
+            v = random.choice(self.g.get_vertices())
+        start = v
+        walk = [v]
+        for i in range(length):
+            neighbors = [self.g.vertex(n) for n in self.g.get_out_neighbors(walk[-1])]
+            walk.append(random.choice(neighbors)) if len(neighbors) != 0 else walk.append(start)
+        return walk
+
+    def deep_walk(self, walk_length=5, window=2):
+        corpus = []
+        vocab = self.g.get_vertices()
+        for i in range(2):
+            random.shuffle(vocab)
+            for v in vocab:
+                corpus.append([self.g.vertex_index[r] for r in self.random_walk(v=v)])
+
+        print(corpus[0])
+        #skipgram
+        vocab_size = len(vocab)
+        table = make_sampling_table(vocab_size)
+        #couples, labels = skipgrams(corpus[0], vocab_size, window_size=window)
+        couples, labels = self.skipgrams(corpus[0], window, vocab)
+        print(couples)
+        print(labels)
+        print(labels.count(1))
+        print(labels.count(0))
         
 
+    def skipgrams(self, sent, window, vocab):
+        couples = []
+        labels = []
+        for i in range(len(sent)):
+            win = []
+            for j in range(1, window+1):
+                try:
+                    win.append(sent[i-j])    #beware list[-1], list[-3], ecc... all exist!
+                except:
+                    pass
+                try:
+                    win.append(sent[i+j])
+                except:
+                    pass
+            for w in win:
+                couples.append([sent[i], w])
+                labels.append(1)
+                ran = random.choice(vocab)
+                while ran in win:
+                    ran = random.choice(vocab)
+                couples.append([sent[i], ran])
+                labels.append(0)
+
+        return couples, labels
+                    
+        
     def merge_vertices(self, v1, v2):         # not working, why??????
         del_list = []
         for e in v1.out_edges():
@@ -176,7 +234,31 @@ class Graph(object):
         for e in reversed(sorted(del_list)):
             self.g.remove_edge(e)
         self.g.remove_vertex(v1)
-    
+
+    def json(self):
+        nodes = []
+        links = []
+        for v in self.g.vertices():
+            nodes.append({"id": self.verts_text[v], "group": 1})
+        for e in self.g.edges():
+            links.append({"source": self.verts_text[e.source()], "target": self.verts_text[e.target()], "value": 1})
+        with open('graph.json', 'w') as f:
+            f.write('{\n\t\"nodes\": [\n')
+            for n in range(len(nodes)):
+                f.write('\t\t')
+                f.write(str(nodes[n]))
+                if n != len(nodes) - 1:
+                    f.write(',')
+                f.write('\n')
+            f.write('\t],\n\t\"links\": [\n')
+            for l in range(len(links)):
+                f.write('\t\t')
+                f.write(str(links[l]))
+                if n != len(links) - 1:
+                    f.write(',')
+                f.write('\n')
+            f.write('\n\t]\n}')
+        
     def draw(self):
         
         vprops = {

@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup
 from graph import Vertex, Graph
-from gensim.models import Word2Vec
+#from gensim.models import Word2Vec
 
 
 causePredicates = ['CAUSES','PREVENTS','DISRUPTS','INHIBITS',
@@ -32,18 +32,21 @@ with open('predicates.xml') as f:
                     o = [obj['entrezName'].replace(':','')]
                 preds.append(Vertex(s, [pred], o))
         i += 1
-        print(i, '/', len(soup), '\r', end='')
+        #print(i, '/', len(soup), '\r', end='')
 
-print('\n', len(preds), ' predications found')
+#print('\n', len(preds), ' predications found')
 
     
 g = Graph(vertices=preds)
-#g.causal()
+g.causal()
+#g.clustering()
 #g.filter_by('co-occurrence', threshold=0.01)
-g.filter_by(method='redundancy', k=6)
+#g.filter_by(method='redundancy', k=6)
 #g.merge_vertices(g.v_mapping['Disease'], g.v_mapping['Virus Diseases'])
 #model = Word2Vec.load('../word-embedding/models/word2vec_window=6_size=300_min_count=7_iter=20.model')
 #g.word_embedding_filter(model, 'virus')
-g.draw()
+#g.draw()
+#g.json()
 
 
+walk = g.deep_walk()
