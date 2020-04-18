@@ -31,9 +31,9 @@ import graph_tool as gt
 from graph_tool.all import graph_draw, graphviz_draw, minimize_blockmodel_dl, fruchterman_reingold_layout, arf_layout
 import re, random
 import numpy as np
+from tensorflow.keras.models import Model
 from keras.preprocessing.sequence import skipgrams, make_sampling_table
-from keras.layers import Embedding
-#from graphviz import Digraph
+from tensorflow.keras.layers import Embedding, Input, Reshape, Dot, Dense
 
 class Graph(object):
 
@@ -167,7 +167,7 @@ class Graph(object):
         self.g.set_edge_filter(co_map)
         self.clean()
 
-    def random_walk(self, v=None, length=5):
+    def random_walk(self, v=None, length=20):
         if v == None:
             v = random.choice(self.g.get_vertices())
         start = v
@@ -177,26 +177,47 @@ class Graph(object):
             walk.append(random.choice(neighbors)) if len(neighbors) != 0 else walk.append(start)
         return walk
 
-    def deep_walk(self, walk_length=5, window=2):
+    def deep_walk(self, walk_length=20, window=5, embedding_dim=150):
         corpus = []
         vocab = self.g.get_vertices()
-        for i in range(2):
+        for i in range(5):
             random.shuffle(vocab)
             for v in vocab:
                 corpus.append([self.g.vertex_index[r] for r in self.random_walk(v=v)])
 
-        print(corpus[0])
-        #skipgram
+        # skipgram with negative sampling
         vocab_size = len(vocab)
         table = make_sampling_table(vocab_size)
-        #couples, labels = skipgrams(corpus[0], vocab_size, window_size=window)
-        couples, labels = self.skipgrams(corpus[0], window, vocab)
-        print(couples)
-        print(labels)
-        print(labels.count(1))
-        print(labels.count(0))
-        
+        couples = []
+        labels = []
+        for sent in corpus:
+            tmp1, tmp2 = skipgrams(sent, vocab_size, window_size=window)
+            couples += tmp1
+            labels += tmp2
+            
+        target, context = zip(*couples)  # unpack couples in two lists: the list of targets and the list of the relative context
+        target = np.array(target)
+        context = np.array(context)
+        # keras input layer
+        input_target = Input((1,))
+        input_context = Input((1,))
+        # keras embedding layer
+        embedding = Embedding(vocab_size, embedding_dim, input_length=1, name='embedding')
+        output_target = embedding(input_target)
+        #output_target = Reshape((embedding_dim, 1))(output_target) # reshape needed for cosine similarity
+        output_context = embedding(input_context)
+        #output_context = Reshape((embedding_dim, 1))(output_context)
+        similarity = Dot(normalize=True, axes=1)([output_target, output_context])
+        #similarity = Reshape((1,))(similarity)
+        # final output
+        output = Dense(1, activation='sigmoid')(similarity)
 
+        model = Model(inputs=[input_target, input_context], outputs=output)
+        model.compile(loss='binary_crossentropy', optimizer='rmsprop')
+        # training
+        model.fit(x=[target,context], y=np.asarray(labels), batch_size=32, epochs=20, validation_split=0.2, workers=12, use_multiprocessing=True)
+        
+    '''
     def skipgrams(self, sent, window, vocab):
         couples = []
         labels = []
@@ -221,7 +242,7 @@ class Graph(object):
                 labels.append(0)
 
         return couples, labels
-                    
+    '''                   
         
     def merge_vertices(self, v1, v2):         # not working, why??????
         del_list = []
