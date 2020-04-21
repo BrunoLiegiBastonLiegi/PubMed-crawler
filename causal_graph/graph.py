@@ -35,13 +35,14 @@ from tensorflow.keras.models import Model
 from keras.preprocessing.sequence import skipgrams, make_sampling_table
 from tensorflow.keras.layers import Embedding, Input, Reshape, Dot, Dense
 
+
 class Graph(object):
 
     def __init__(self, vertices=None):
         self.g = gt.Graph()
-        self.verts_text = self.g.new_vertex_property("string")
-        self.edges_text = self.g.new_edge_property("string")
-        self.v_mapping = {}
+        self.vertex2label = self.g.new_vertex_property("string")
+        self.edge2label = self.g.new_edge_property("string")
+        self.label2vertex = {}
         self.causal_preds = ['CAUSES','PREVENTS','DISRUPTS','INHIBITS','PREDISPOSES','PRODUCES']
         self.bidir_preds = ['COEXISTS_WITH','ASSOCIATED_WITH']
         if vertices!=None:
@@ -49,39 +50,39 @@ class Graph(object):
 
     def add_vertex(self, vertex):
         try:
-            v_i = self.v_mapping[vertex.me]
+            v_i = self.label2vertex[vertex.me]
         except:
-            self.v_mapping[vertex.me] = self.g.add_vertex()
-            v_i = self.v_mapping[vertex.me]
-            self.verts_text[v_i] = vertex.me
+            self.label2vertex[vertex.me] = self.g.add_vertex()
+            v_i = self.label2vertex[vertex.me]
+            self.vertex2label[v_i] = vertex.me
                     
         v_f = []
         for n in vertex.neighbors:
             try:
-                v_f.append(self.v_mapping[n])
+                v_f.append(self.label2vertex[n])
             except:
-                self.v_mapping[n] = self.g.add_vertex()
-                v_f.append(self.v_mapping[n])
-                #self.verts_text[v_f[-1]] = n
-                self.verts_text[self.v_mapping[n]] = n
+                self.label2vertex[n] = self.g.add_vertex()
+                v_f.append(self.label2vertex[n])
+                #self.vertex2label[v_f[-1]] = n
+                self.vertex2label[self.label2vertex[n]] = n
                 
         #e = [self.add_edge(vertex.edges[j], v_i, v_f[j]) for j in range(len(vertex.edges))]
         for j in range(len(vertex.edges)):
             self.add_edge(vertex.edges[j], v_i, v_f[j], dir='bi') if vertex.edges[j] in self.bidir_preds else self.add_edge(vertex.edges[j], v_i, v_f[j])
         
-    def add_edge(self, edge, gt_v1, gt_v2, dir='straight'):
+    def add_edge(self, edge, v1, v2, dir='straight'):
         assert dir in {'straight', 'inverted', 'bi'}, 'Unsupported edge direction'
         if dir == 'bi':
-            e = self.g.add_edge(gt_v1, gt_v2)
-            self.edges_text[e] = edge
-            e = self.g.add_edge(gt_v2, gt_v1)
-            self.edges_text[e] = edge
+            e = self.g.add_edge(v1, v2)
+            self.edge2label[e] = edge
+            e = self.g.add_edge(v2, v1)
+            self.edge2label[e] = edge
         else:
             if dir == 'straight':
-                e = self.g.add_edge(gt_v1, gt_v2)
+                e = self.g.add_edge(v1, v2)
             elif dir == 'inverted':
-                e = self.g.add_edge(gt_v2, gt_v1)
-            self.edges_text[e] = edge
+                e = self.g.add_edge(v2, v1)
+            self.edge2label[e] = edge
 
     def adjacency_list(self):
         dict = {}
@@ -93,9 +94,10 @@ class Graph(object):
 
     def clean(self):
         v_list = []
-        for v in self.g.vertices():
-            if v.out_degree() + v.in_degree() < 1:
+        for v in self.g.get_vertices():
+            if self.g.get_out_degrees([v]) + self.g.get_in_degrees([v]) < 1:
                 v_list.append(v)
+
         self.g.remove_vertex(v_list)
     
     def redundancy(self, k=2):
@@ -105,9 +107,9 @@ class Graph(object):
             for e in v.out_edges():
                 t = e.target()
                 try:
-                    dict[self.verts_text[t]].append(e)
+                    dict[self.vertex2label[t]].append(e)
                 except:
-                    dict[self.verts_text[t]] = [e]
+                    dict[self.vertex2label[t]] = [e]
             for i in dict.values():
                 if len(i) < k:
                     for j in i:
@@ -123,7 +125,7 @@ class Graph(object):
         embedding_map = self.g.new_vertex_property("bool")
         WORD = re.compile(r'\w+')
         for v in self.g.vertices():
-            ent = WORD.findall(self.verts_text[v])
+            ent = WORD.findall(self.vertex2label[v])
             if model.wv.n_similarity(ent, target) > 0.4:
                 embedding_map[v] = True
             else:
@@ -144,7 +146,7 @@ class Graph(object):
     def causal(self):
         causal_map = self.g.new_edge_property("bool")
         for e in self.g.edges():
-            if self.edges_text[e] in self.causal_preds or self.edges_text[e] in self.bidir_preds:
+            if self.edge2label[e] in self.causal_preds or self.edge2label[e] in self.bidir_preds:
                 causal_map[e] = True
             else:
                 causal_map[e] = False
@@ -173,17 +175,21 @@ class Graph(object):
         start = v
         walk = [v]
         for i in range(length):
-            neighbors = [self.g.vertex(n) for n in self.g.get_out_neighbors(walk[-1])]
-            walk.append(random.choice(neighbors)) if len(neighbors) != 0 else walk.append(start)
+            neighbors = [n for n in self.g.get_out_neighbors(walk[-1])]
+            if len(neighbors) != 0:
+                walk.append(random.choice(neighbors))
+            else:
+                #walk.append(start)
+                break
         return walk
 
-    def deep_walk(self, walk_length=20, window=5, embedding_dim=150):
+    def deep_walk(self, walk_length=20, window=5, embedding_dim=100):
         corpus = []
         vocab = self.g.get_vertices()
-        for i in range(5):
-            random.shuffle(vocab)
-            for v in vocab:
-                corpus.append([self.g.vertex_index[r] for r in self.random_walk(v=v)])
+        for i in range(3):
+            #random.shuffle(vocab)
+            for j in range(len(vocab)):
+                corpus.append(self.random_walk(v=random.choice(vocab)))
 
         # skipgram with negative sampling
         vocab_size = len(vocab)
@@ -195,7 +201,7 @@ class Graph(object):
             couples += tmp1
             labels += tmp2
             
-        target, context = zip(*couples)  # unpack couples in two lists: the list of targets and the list of the relative context
+        target, context = zip(*couples)  # unpack couples in two lists: the list of targets and the list of the relative contexts
         target = np.array(target)
         context = np.array(context)
         # keras input layer
@@ -204,18 +210,29 @@ class Graph(object):
         # keras embedding layer
         embedding = Embedding(vocab_size, embedding_dim, input_length=1, name='embedding')
         output_target = embedding(input_target)
-        #output_target = Reshape((embedding_dim, 1))(output_target) # reshape needed for cosine similarity
+        output_target = Reshape((embedding_dim, 1))(output_target) # reshape needed for cosine similarity
         output_context = embedding(input_context)
-        #output_context = Reshape((embedding_dim, 1))(output_context)
+        output_context = Reshape((embedding_dim, 1))(output_context)
         similarity = Dot(normalize=True, axes=1)([output_target, output_context])
-        #similarity = Reshape((1,))(similarity)
+        similarity = Reshape((1,))(similarity)
         # final output
         output = Dense(1, activation='sigmoid')(similarity)
 
         model = Model(inputs=[input_target, input_context], outputs=output)
         model.compile(loss='binary_crossentropy', optimizer='rmsprop')
         # training
-        model.fit(x=[target,context], y=np.asarray(labels), batch_size=32, epochs=20, validation_split=0.2, workers=12, use_multiprocessing=True)
+        model.fit(x=[target,context], y=np.asarray(labels), batch_size=32, epochs=1, validation_split=0.2, workers=12, use_multiprocessing=True)
+
+        weights = embedding.get_weights()
+        #print(weights[0].shape)
+        print(vocab)
+        self.embedding = {}
+        for n in vocab:
+            text = self.vertex2label[self.g.vertex(n)]
+            print(n, '-->', text, '-->', self.g.vertex_index[self.label2vertex[text]])
+            self.embedding[self.g.vertex(n)] = weights[0][n]
+
+        return self.embedding
         
     '''
     def skipgrams(self, sent, window, vocab):
@@ -247,10 +264,10 @@ class Graph(object):
     def merge_vertices(self, v1, v2):         # not working, why??????
         del_list = []
         for e in v1.out_edges():
-            self.add_edge(self.edges_text[e], v2, e.target())
+            self.add_edge(self.edge2label[e], v2, e.target())
             del_list.append(e)
         for e in v1.in_edges():
-            self.add_edge(self.edges_text[e], e.source(), v2)
+            self.add_edge(self.edge2label[e], e.source(), v2)
             del_list.append(e)
         for e in reversed(sorted(del_list)):
             self.g.remove_edge(e)
@@ -260,9 +277,9 @@ class Graph(object):
         nodes = []
         links = []
         for v in self.g.vertices():
-            nodes.append({"id": self.verts_text[v], "group": 1})
+            nodes.append({"id": self.vertex2label[v], "group": 1})
         for e in self.g.edges():
-            links.append({"source": self.verts_text[e.source()], "target": self.verts_text[e.target()], "value": 1})
+            links.append({"source": self.vertex2label[e.source()], "target": self.vertex2label[e.target()], "value": 1})
         with open('graph.json', 'w') as f:
             f.write('{\n\t\"nodes\": [\n')
             for n in range(len(nodes)):
@@ -283,14 +300,14 @@ class Graph(object):
     def draw(self):
         
         vprops = {
-            'text': self.verts_text,
+            'text': self.vertex2label,
             'font_size':16,
             'size':1,
             'text_color':'black'
         }
         
         eprops = {
-            #'text': self.edges_text,
+            #'text': self.edge2label,
             'pen_width':2,
             'end_marker':'arrow',
             'marker_size':12,
@@ -301,9 +318,9 @@ class Graph(object):
         '''
         dot = Digraph(comment='Test')
         for v in self.g.vertices():
-            dot.node(self.verts_text[v])
+            dot.node(self.vertex2label[v])
             for n in v.out_neighbors():
-                dot.edge(self.verts_text[v],self.verts_text[n])
+                dot.edge(self.vertex2label[v],self.vertex2label[n])
 
         dot.render(view=True)
         '''
