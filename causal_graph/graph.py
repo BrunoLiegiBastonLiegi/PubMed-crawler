@@ -1,3 +1,4 @@
+import warnings
 
 class Vertex:
     """Vertex of graph represented as an adjacency list"""
@@ -52,6 +53,7 @@ class Graph(ABC):
         if vertices!=None:
             [self.add_vertex(v) for v in vertices]
         '''
+        
     @abstractmethod
     def add_vertex(self, vertex):
         pass
@@ -77,6 +79,7 @@ class Graph(ABC):
         for j in range(len(vertex.edges)):
             self.add_edge(vertex.edges[j], v_i, v_f[j], dir='bi') if vertex.edges[j] in self.bidir_preds else self.add_edge(vertex.edges[j], v_i, v_f[j])
         '''
+        
     @abstractmethod   
     def add_edge(self, edge, v1, v2, dir='straight'):
         pass
@@ -94,6 +97,15 @@ class Graph(ABC):
                 e = self.g.add_edge(v2, v1)
             self.edge2label[e] = edge
         '''
+
+    @abstractmethod
+    def get_vertex(self):
+        pass
+    
+    @abstractmethod
+    def get_edges(self):
+        pass
+    
     def adjacency_list(self):
         dict = {}
         for v in self.g.vertices():
@@ -342,7 +354,6 @@ class Graph_tool(Graph):
         for j in range(len(vertex.edges)):
             self.add_edge(vertex.edges[j], v_i, v_f[j], dir='bi') if vertex.edges[j] in self.bidir_preds else self.add_edge(vertex.edges[j], v_i, v_f[j])
 
-
     def add_edge(self, edge, v1, v2, dir='straight'):
         assert dir in {'straight', 'inverted', 'bi'}, 'Unsupported edge direction'
         if dir == 'bi':
@@ -361,5 +372,39 @@ class Graph_tool(Graph):
         if type(v) == str:
             return self.label2vertex[v]
         if type(v) == int:
-            return self.vertex2label[v]
+            return self.g.vertex(v)
         
+    def get_edges(self, v1, v2=None, dir='out'):
+
+        if v2 == None:
+            assert type(v1) == str or type(v1) == int, 'Unsupported vertex represenation'
+            assert dir in ['in', 'out', 'all'], 'Unsupported edges direction'
+            if type(v1) == str:
+                w1 = self.label2vertex[v1]
+            else:
+                w1 = self.g.vertex(v1)
+            if dir == 'out':
+                return self.g.get_out_edges(w1)
+            if dir == 'in':
+                return self.g.get_in_edges(w1)
+            if dir == 'all':
+                return self.g.get_all_edges(w1)
+        else:    
+            assert type(v1) == type(v2), 'Different vertex representation passed'
+            if type(v1) == str:
+                w1 = self.label2vertex[v1]
+                w2 = self.label2vertex[v2]
+            else:
+                w1 = v1
+                w2 = v2
+            return self.g.edge(w1, w2, all_edges=True)
+
+
+
+
+
+
+class Networkx(Graph):
+
+    def __init__(self):
+        self.g = 1
