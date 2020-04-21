@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup
 from graph import Vertex, Graph
 #from gensim.models import Word2Vec
+import numpy as np
 
 
 causePredicates = ['CAUSES','PREVENTS','DISRUPTS','INHIBITS',
@@ -43,10 +44,22 @@ g.causal()
 #g.filter_by('co-occurrence', threshold=0.01)
 #g.filter_by(method='redundancy', k=6)
 #g.merge_vertices(g.v_mapping['Disease'], g.v_mapping['Virus Diseases'])
-#model = Word2Vec.load('../word-embedding/models/word2vec_window=6_size=300_min_count=7_iter=20.model')
-#g.word_embedding_filter(model, 'virus')
-#g.draw()
+g.draw()
 #g.json()
 
 
-walk = g.deep_walk()
+embedding = g.deep_walk()
+
+def cos(v1,v2):
+    n1 = np.sqrt(np.dot(v1,v1))
+    n2 = np.sqrt(np.dot(v2,v2))
+    return np.dot(v1,v2)/(n1*n2)
+
+v1 = embedding[g.label2vertex['Procedures']]
+#v2 = embedding[g.v_mapping['Pharmaceutical Preparations']]
+#v2 = embedding[g.v_mapping['Antiviral Therapy']]
+
+print('Cosine similarity between node \'Procedures\' and:')
+#for key, value in embedding.items():
+    #print(g.verts_text[key],'-->',cos(v1,value))
+
