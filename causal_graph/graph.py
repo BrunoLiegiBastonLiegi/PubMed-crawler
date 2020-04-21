@@ -37,9 +37,12 @@ from tensorflow.keras.layers import Embedding, Input, Reshape, Dot, Dense
 from abc import ABC, abstractmethod
 
 
-class Graph(object):
+class Graph(ABC):
 
+    @abstractmethod
     def __init__(self, vertices=None):
+        pass
+        '''
         self.g = gt.Graph()
         self.vertex2label = self.g.new_vertex_property("string")
         self.edge2label = self.g.new_edge_property("string")
@@ -48,8 +51,11 @@ class Graph(object):
         self.bidir_preds = ['COEXISTS_WITH','ASSOCIATED_WITH']
         if vertices!=None:
             [self.add_vertex(v) for v in vertices]
-
+        '''
+    @abstractmethod
     def add_vertex(self, vertex):
+        pass
+        '''
         try:
             v_i = self.label2vertex[vertex.me]
         except:
@@ -70,8 +76,11 @@ class Graph(object):
         #e = [self.add_edge(vertex.edges[j], v_i, v_f[j]) for j in range(len(vertex.edges))]
         for j in range(len(vertex.edges)):
             self.add_edge(vertex.edges[j], v_i, v_f[j], dir='bi') if vertex.edges[j] in self.bidir_preds else self.add_edge(vertex.edges[j], v_i, v_f[j])
-        
+        '''
+    @abstractmethod   
     def add_edge(self, edge, v1, v2, dir='straight'):
+        pass
+        '''
         assert dir in {'straight', 'inverted', 'bi'}, 'Unsupported edge direction'
         if dir == 'bi':
             e = self.g.add_edge(v1, v2)
@@ -84,7 +93,7 @@ class Graph(object):
             elif dir == 'inverted':
                 e = self.g.add_edge(v2, v1)
             self.edge2label[e] = edge
-
+        '''
     def adjacency_list(self):
         dict = {}
         for v in self.g.vertices():
@@ -235,33 +244,6 @@ class Graph(object):
 
         return self.embedding
         
-    '''
-    def skipgrams(self, sent, window, vocab):
-        couples = []
-        labels = []
-        for i in range(len(sent)):
-            win = []
-            for j in range(1, window+1):
-                try:
-                    win.append(sent[i-j])    #beware list[-1], list[-3], ecc... all exist!
-                except:
-                    pass
-                try:
-                    win.append(sent[i+j])
-                except:
-                    pass
-            for w in win:
-                couples.append([sent[i], w])
-                labels.append(1)
-                ran = random.choice(vocab)
-                while ran in win:
-                    ran = random.choice(vocab)
-                couples.append([sent[i], ran])
-                labels.append(0)
-
-        return couples, labels
-    '''                   
-        
     def merge_vertices(self, v1, v2):         # not working, why??????
         del_list = []
         for e in v1.out_edges():
@@ -325,3 +307,59 @@ class Graph(object):
 
         dot.render(view=True)
         '''
+
+
+
+
+
+class Graph_tool(Graph):
+
+    def __init__(self):
+        
+        self.g = gt.Graph()
+        self.vertex2label = self.g.new_vertex_property("string")
+        self.edge2label = self.g.new_edge_property("string")
+        self.label2vertex = {}
+        self.bidir_preds = ['COEXISTS_WITH','ASSOCIATED_WITH']
+
+    def add_vertex(self, vertex):
+        try:
+            v_i = self.label2vertex[vertex.me]
+        except:
+            self.label2vertex[vertex.me] = self.g.add_vertex()
+            v_i = self.label2vertex[vertex.me]
+            self.vertex2label[v_i] = vertex.me
+                    
+        v_f = []
+        for n in vertex.neighbors:
+            try:
+                v_f.append(self.label2vertex[n])
+            except:
+                self.label2vertex[n] = self.g.add_vertex()
+                v_f.append(self.label2vertex[n])
+                self.vertex2label[self.label2vertex[n]] = n
+                
+        for j in range(len(vertex.edges)):
+            self.add_edge(vertex.edges[j], v_i, v_f[j], dir='bi') if vertex.edges[j] in self.bidir_preds else self.add_edge(vertex.edges[j], v_i, v_f[j])
+
+
+    def add_edge(self, edge, v1, v2, dir='straight'):
+        assert dir in {'straight', 'inverted', 'bi'}, 'Unsupported edge direction'
+        if dir == 'bi':
+            e = self.g.add_edge(v1, v2)
+            self.edge2label[e] = edge
+            e = self.g.add_edge(v2, v1)
+            self.edge2label[e] = edge
+        else:
+            if dir == 'straight':
+                e = self.g.add_edge(v1, v2)
+            elif dir == 'inverted':
+                e = self.g.add_edge(v2, v1)
+            self.edge2label[e] = edge
+
+    def get_vertex(self, v):
+        if type(v) == str:
+            return self.label2vertex[v]
+        if type(v) == int:
+            return self.vertex2label[v]
+        
