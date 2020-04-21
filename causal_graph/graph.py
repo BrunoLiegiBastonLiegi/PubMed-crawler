@@ -34,6 +34,7 @@ import numpy as np
 from tensorflow.keras.models import Model
 from keras.preprocessing.sequence import skipgrams, make_sampling_table
 from tensorflow.keras.layers import Embedding, Input, Reshape, Dot, Dense
+from abc import ABC, abstractmethod
 
 
 class Graph(object):
