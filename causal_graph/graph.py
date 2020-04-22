@@ -50,9 +50,8 @@ class Graph(ABC):
         self.causal_preds = ['CAUSES','PREVENTS','DISRUPTS','INHIBITS','PREDISPOSES','PRODUCES']
         self.init(vertices)
         
-
     @abstractmethod
-    def init(self):
+    def init(self, vertices):
         pass
         
     @abstractmethod
@@ -64,11 +63,19 @@ class Graph(ABC):
         pass
 
     @abstractmethod
-    def get_vertex(self):
+    def get_vertex(self, v):
+        pass
+
+    @abstractmethod
+    def get_vertices(self):
         pass
     
     @abstractmethod
-    def get_edges(self):
+    def get_edges(self, v1, v2, dir='out'):
+        pass
+
+    @abstractmethod
+    def get_neighbors(self, v, dir='out'):
         pass
     
     def adjacency_list(self):
@@ -158,11 +165,11 @@ class Graph(ABC):
 
     def random_walk(self, v=None, length=20):
         if v == None:
-            v = random.choice(self.g.get_vertices())
+            v = random.choice(self.get_vertices())
         start = v
         walk = [v]
         for i in range(length):
-            neighbors = [n for n in self.g.get_out_neighbors(walk[-1])]
+            neighbors = [n for n in self.g.get_neighbors(walk[-1])]
             if len(neighbors) != 0:
                 walk.append(random.choice(neighbors))
             else:
@@ -296,7 +303,6 @@ class Graph_tool(Graph):
         self.g = gt.Graph()
         self.vertex2label = self.g.new_vertex_property("string")
         self.edge2label = self.g.new_edge_property("string")
-        self.bidir_preds = ['COEXISTS_WITH','ASSOCIATED_WITH']
         if vertices !=None:
             [self.add_vertex(v) for v in vertices]
 
@@ -339,6 +345,9 @@ class Graph_tool(Graph):
             return self.label2vertex[v]
         if type(v) == int:
             return self.g.vertex(v)
+
+    def get_vertices(self):
+        return self.g.get_vertices()
         
     def get_edges(self, v1, v2=None, dir='out'):
 
@@ -364,11 +373,16 @@ class Graph_tool(Graph):
                 w1 = v1
                 w2 = v2
             return self.g.edge(w1, w2, all_edges=True)
-
-
-
-
-
+        
+    def get_neighbors(self, v, dir='out'):
+        assert dir in ['in', 'out', 'all'], 'Unsupported direction'
+        if dir == 'out':
+            return self.g.get_out_neighbors()
+        if dir == 'in':
+            return self.g.get_in_neighbors()
+        if dir == 'all':
+            return self.g.get_all_neighbors()
+        
 
 class Networkx(Graph):
 
@@ -376,6 +390,8 @@ class Networkx(Graph):
         self.g = nx.MultiDiGraph()
         self.vertex2label = {}
         self.edge2label = {}
+        if vertices != None:
+            [self.add_vertex(v) for v in vertices]
 
     def add_vertex(self, vertex):
         try:
@@ -419,6 +435,9 @@ class Networkx(Graph):
             return self.label2vertex[v]
         if type(v) == int:
             return self.vertex2label[v]
+
+    def get_vertices(self):
+        return [v for v in self.g]
         
     def get_edges(self, v1, v2=None, dir='out'):
         if v2 == None:
@@ -426,10 +445,12 @@ class Networkx(Graph):
             assert dir =='out', 'Unsupported edges direction'
             if type(v1) == str:
                 w1 = self.label2vertex[v1]
+            else:
+                w1 = v1
             if dir == 'out':
                 out = []
-                for key, val in self.g[v1].items():
-                    out.append([ [w1, key, lab['label']] for lab in v.values()])
+                for key, val in self.g[w1].items():
+                    [ out.append([w1, key, lab['label']]) for lab in val.values()]
                 return out
         else:                                                 
             assert type(v1) == type(v2), 'Different vertex representations passed'
@@ -439,4 +460,11 @@ class Networkx(Graph):
             else:
                 w1 = v1
                 w2 = v2
-            return [ [w1, w2, lab['label']] for lab in g[w1][w2].values() ]
+            return [ [w1, w2, lab['label']] for lab in self.g[w1][w2].values() ]
+        
+    def get_neighbors(self, v, dir='out'):
+        assert dir == 'out', 'Unsupported direction'
+        if dir == 'out':
+                return [n for n in self.g[v].keys()]
+        
+        

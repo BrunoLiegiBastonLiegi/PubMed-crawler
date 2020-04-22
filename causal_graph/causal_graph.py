@@ -1,5 +1,5 @@
 from bs4 import BeautifulSoup
-from graph import Vertex, Graph
+from graph import Vertex, Graph, Graph_tool, Networkx
 #from gensim.models import Word2Vec
 import numpy as np
 
@@ -38,24 +38,31 @@ with open('predicates.xml') as f:
 #print('\n', len(preds), ' predications found')
 
     
-g = Graph(vertices=preds)
-g.causal()
+g = Graph_tool(vertices=preds)
+f = Networkx(vertices=preds)
+print(g.get_vertex('Procedures'))
+print('///////////// edges\n',g.get_edges('Procedures', dir='all'))
+#print(f.get_vertex(123))
+#print('///////////// edges\n',f.get_edges(123))
+
+
+#g.causal()
 #g.clustering()
 #g.filter_by('co-occurrence', threshold=0.01)
 #g.filter_by(method='redundancy', k=6)
 #g.merge_vertices(g.v_mapping['Disease'], g.v_mapping['Virus Diseases'])
-g.draw()
+#g.draw()
 #g.json()
 
 
-embedding = g.deep_walk()
+#embedding = g.deep_walk()
 
 def cos(v1,v2):
     n1 = np.sqrt(np.dot(v1,v1))
     n2 = np.sqrt(np.dot(v2,v2))
     return np.dot(v1,v2)/(n1*n2)
 
-v1 = embedding[g.label2vertex['Procedures']]
+#v1 = embedding[g.label2vertex['Procedures']]
 #v2 = embedding[g.v_mapping['Pharmaceutical Preparations']]
 #v2 = embedding[g.v_mapping['Antiviral Therapy']]
 
