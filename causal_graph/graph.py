@@ -30,6 +30,7 @@ class Edge:
 
 import graph_tool as gt
 from graph_tool.all import graph_draw, graphviz_draw, minimize_blockmodel_dl, fruchterman_reingold_layout, arf_layout
+import networkx as nx
 import re, random
 import numpy as np
 from tensorflow.keras.models import Model
@@ -40,63 +41,27 @@ from abc import ABC, abstractmethod
 
 class Graph(ABC):
 
-    @abstractmethod
     def __init__(self, vertices=None):
-        pass
-        '''
-        self.g = gt.Graph()
-        self.vertex2label = self.g.new_vertex_property("string")
-        self.edge2label = self.g.new_edge_property("string")
+        self.g = None
+        self.vertex2label = None
+        self.edge2label = None
         self.label2vertex = {}
-        self.causal_preds = ['CAUSES','PREVENTS','DISRUPTS','INHIBITS','PREDISPOSES','PRODUCES']
         self.bidir_preds = ['COEXISTS_WITH','ASSOCIATED_WITH']
-        if vertices!=None:
-            [self.add_vertex(v) for v in vertices]
-        '''
+        self.causal_preds = ['CAUSES','PREVENTS','DISRUPTS','INHIBITS','PREDISPOSES','PRODUCES']
+        self.init(vertices)
+        
+
+    @abstractmethod
+    def init(self):
+        pass
         
     @abstractmethod
     def add_vertex(self, vertex):
         pass
-        '''
-        try:
-            v_i = self.label2vertex[vertex.me]
-        except:
-            self.label2vertex[vertex.me] = self.g.add_vertex()
-            v_i = self.label2vertex[vertex.me]
-            self.vertex2label[v_i] = vertex.me
-                    
-        v_f = []
-        for n in vertex.neighbors:
-            try:
-                v_f.append(self.label2vertex[n])
-            except:
-                self.label2vertex[n] = self.g.add_vertex()
-                v_f.append(self.label2vertex[n])
-                #self.vertex2label[v_f[-1]] = n
-                self.vertex2label[self.label2vertex[n]] = n
-                
-        #e = [self.add_edge(vertex.edges[j], v_i, v_f[j]) for j in range(len(vertex.edges))]
-        for j in range(len(vertex.edges)):
-            self.add_edge(vertex.edges[j], v_i, v_f[j], dir='bi') if vertex.edges[j] in self.bidir_preds else self.add_edge(vertex.edges[j], v_i, v_f[j])
-        '''
         
     @abstractmethod   
     def add_edge(self, edge, v1, v2, dir='straight'):
         pass
-        '''
-        assert dir in {'straight', 'inverted', 'bi'}, 'Unsupported edge direction'
-        if dir == 'bi':
-            e = self.g.add_edge(v1, v2)
-            self.edge2label[e] = edge
-            e = self.g.add_edge(v2, v1)
-            self.edge2label[e] = edge
-        else:
-            if dir == 'straight':
-                e = self.g.add_edge(v1, v2)
-            elif dir == 'inverted':
-                e = self.g.add_edge(v2, v1)
-            self.edge2label[e] = edge
-        '''
 
     @abstractmethod
     def get_vertex(self):
@@ -326,13 +291,14 @@ class Graph(ABC):
 
 class Graph_tool(Graph):
 
-    def __init__(self):
+    def init(self, vertices=None):
         
         self.g = gt.Graph()
         self.vertex2label = self.g.new_vertex_property("string")
         self.edge2label = self.g.new_edge_property("string")
-        self.label2vertex = {}
         self.bidir_preds = ['COEXISTS_WITH','ASSOCIATED_WITH']
+        if vertices !=None:
+            [self.add_vertex(v) for v in vertices]
 
     def add_vertex(self, vertex):
         try:
@@ -389,8 +355,8 @@ class Graph_tool(Graph):
                 return self.g.get_in_edges(w1)
             if dir == 'all':
                 return self.g.get_all_edges(w1)
-        else:    
-            assert type(v1) == type(v2), 'Different vertex representation passed'
+        else:                                                 # warning here dir is not used, it returns always all edges (in & out)
+            assert type(v1) == type(v2), 'Different vertex representations passed'
             if type(v1) == str:
                 w1 = self.label2vertex[v1]
                 w2 = self.label2vertex[v2]
@@ -406,5 +372,74 @@ class Graph_tool(Graph):
 
 class Networkx(Graph):
 
-    def __init__(self):
-        self.g = 1
+    def init(self, vertices):
+        self.g = nx.DiGraph()
+        self.vertex2label = {}
+        self.edge2label = {}
+
+    def add_vertex(self, vertex):
+        try:
+            v_i = self.label2vertex[vertex.me]
+        except:
+            v_i = self.g.number_of_nodes() 
+            self.g.add_node(v_i, label=vertex.me)
+            self.label2vertex[vertex.me] = v_i
+            self.vertex2label[v_i] = vertex.me
+
+        v_f = []
+        index = self.g.number_of_nodes()
+        for n in vertex.neighbors:
+            try:
+                v_f.append(self.label2vertex[n])
+            except:
+                v_f.append(index)
+                self.label2vertex[n] = index
+                self.vertex2label[index] = n
+                index += 1
+
+        for j in range(len(vertex.edges)):
+            self.add_edge(vertex.edges[j], v_i, v_f[j], dir='bi') if vertex.edges[j] in self.bidir_preds else self.add_edge(vertex.edges[j], v_i, v_f[j])
+
+    def add_edge(self, edge, v1, v2, dir='straight'):
+        assert dir in {'straight', 'inverted', 'bi'}, 'Unsupported edge direction'
+        if dir == 'bi':
+            e = self.g.add_edge(v1, v2, label=edge)
+            #self.edge2label[e] = edge
+            e = self.g.add_edge(v2, v1, label=edge)
+            #self.edge2label[e] = edge
+        else:
+            if dir == 'straight':
+                e = self.g.add_edge(v1, v2, label=edge)
+            elif dir == 'inverted':
+                e = self.g.add_edge(v2, v1, label=edge)
+            #self.edge2label[e] = edge
+
+    def get_vertex(self, v):
+        if type(v) == str:
+            return self.label2vertex[v]
+        if type(v) == int:
+            return self.vertex2label[v]
+        
+    def get_edges(self, v1, v2=None, dir='out'):
+        if v2 == None:
+            assert type(v1) == str or type(v1) == int, 'Unsupported vertex represenation'
+            assert dir in ['in', 'out', 'all'], 'Unsupported edges direction'
+            if type(v1) == str:
+                w1 = self.label2vertex[v1]
+            else:
+                w1 = self.vertex2label(v1)
+            if dir == 'out':
+                return self.g.get_out_edges(w1)
+            if dir == 'in':
+                return self.g.get_in_edges(w1)
+            if dir == 'all':
+                return self.g.get_all_edges(w1)
+        else:                                                 # warning here dir is not used, it returns always all edges (in & out)
+            assert type(v1) == type(v2), 'Different vertex representations passed'
+            if type(v1) == str:
+                w1 = self.label2vertex[v1]
+                w2 = self.label2vertex[v2]
+            else:
+                w1 = v1
+                w2 = v2
+            return self.g.edge(w1, w2, all_edges=True)
