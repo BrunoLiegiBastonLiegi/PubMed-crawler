@@ -373,7 +373,7 @@ class Graph_tool(Graph):
 class Networkx(Graph):
 
     def init(self, vertices):
-        self.g = nx.DiGraph()
+        self.g = nx.MultiDiGraph()
         self.vertex2label = {}
         self.edge2label = {}
 
@@ -422,19 +422,16 @@ class Networkx(Graph):
         
     def get_edges(self, v1, v2=None, dir='out'):
         if v2 == None:
-            assert type(v1) == str or type(v1) == int, 'Unsupported vertex represenation'
-            assert dir in ['in', 'out', 'all'], 'Unsupported edges direction'
+            assert type(v1) == str or type(v1) == int, 'Unsupported vertex representation'
+            assert dir =='out', 'Unsupported edges direction'
             if type(v1) == str:
                 w1 = self.label2vertex[v1]
-            else:
-                w1 = self.vertex2label(v1)
             if dir == 'out':
-                return self.g.get_out_edges(w1)
-            if dir == 'in':
-                return self.g.get_in_edges(w1)
-            if dir == 'all':
-                return self.g.get_all_edges(w1)
-        else:                                                 # warning here dir is not used, it returns always all edges (in & out)
+                out = []
+                for key, val in self.g[v1].items():
+                    out.append([ [w1, key, lab['label']] for lab in v.values()])
+                return out
+        else:                                                 
             assert type(v1) == type(v2), 'Different vertex representations passed'
             if type(v1) == str:
                 w1 = self.label2vertex[v1]
@@ -442,4 +439,4 @@ class Networkx(Graph):
             else:
                 w1 = v1
                 w2 = v2
-            return self.g.edge(w1, w2, all_edges=True)
+            return [ [w1, w2, lab['label']] for lab in g[w1][w2].values() ]
