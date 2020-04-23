@@ -37,6 +37,7 @@ from tensorflow.keras.models import Model
 from keras.preprocessing.sequence import skipgrams, make_sampling_table
 from tensorflow.keras.layers import Embedding, Input, Reshape, Dot, Dense
 from abc import ABC, abstractmethod
+import matplotlib.pyplot as plt
 
 
 class Graph(ABC):
@@ -77,22 +78,29 @@ class Graph(ABC):
     @abstractmethod
     def get_neighbors(self, v, dir='out'):
         pass
+
+    @abstractmethod
+    def get_degree(self, v, dir='all'):
+        pass
     
-    def adjacency_list(self):
-        dict = {}
-        for v in self.g.vertices():
-            dict[v] = []
-            for n in v.out_neighbors():
-                dict[v].append(n)
-        return dict
+    @abstractmethod
+    def remove_vertices(self, vl):
+        pass
+
+    @abstractmethod
+    def remove_edge(self):
+        pass
+    
+    @abstractmethod
+    def draw(self):
+        pass
 
     def clean(self):
-        v_list = []
-        for v in self.g.get_vertices():
-            if self.g.get_out_degrees([v]) + self.g.get_in_degrees([v]) < 1:
-                v_list.append(v)
-
-        self.g.remove_vertex(v_list)
+        vl = []
+        for v in self.get_vertices():
+            if self.get_degree(v) < 1:
+                vl.append(v)
+        self.remove_vertices(vl)
     
     def redundancy(self, k=2):
         redundancy_map = self.g.new_edge_property("bool") # have to use filtering cause removal was causing core dumped
@@ -114,16 +122,6 @@ class Graph(ABC):
                         
         self.g.set_edge_filter(redundancy_map)
         self.clean()
-
-    def word_embedding(self, model, target):
-        embedding_map = self.g.new_vertex_property("bool")
-        WORD = re.compile(r'\w+')
-        for v in self.g.vertices():
-            ent = WORD.findall(self.vertex2label[v])
-            if model.wv.n_similarity(ent, target) > 0.4:
-                embedding_map[v] = True
-            else:
-                embedding_map[v] = False
 
     def filter_by(self, method, **kwargs):
         assert method in ['causal','co-occurrence','word_embedding','redundancy'], 'Unsupported pruning method'
@@ -166,10 +164,10 @@ class Graph(ABC):
     def random_walk(self, v=None, length=20):
         if v == None:
             v = random.choice(self.get_vertices())
-        start = v
+        #start = v
         walk = [v]
         for i in range(length):
-            neighbors = [n for n in self.g.get_neighbors(walk[-1])]
+            neighbors = [n for n in self.get_neighbors(walk[-1])]
             if len(neighbors) != 0:
                 walk.append(random.choice(neighbors))
             else:
@@ -222,7 +220,7 @@ class Graph(ABC):
         print(vocab)
         self.embedding = {}
         for n in vocab:
-            text = self.vertex2label[self.g.vertex(n)]
+            text = self.get_vertex(n)
             print(n, '-->', text, '-->', self.g.vertex_index[self.label2vertex[text]])
             self.embedding[self.g.vertex(n)] = weights[0][n]
 
@@ -264,33 +262,6 @@ class Graph(ABC):
                 f.write('\n')
             f.write('\n\t]\n}')
         
-    def draw(self):
-        
-        vprops = {
-            'text': self.vertex2label,
-            'font_size':16,
-            'size':1,
-            'text_color':'black'
-        }
-        
-        eprops = {
-            #'text': self.edge2label,
-            'pen_width':2,
-            'end_marker':'arrow',
-            'marker_size':12,
-        }
-        
-        graph_draw(self.g, vprops=vprops, eprops=eprops, output_size=(2000, 2000))
-        #graphviz_draw(self.g, layout='sfdp', vprops=vprops, eprops=eprops, size=(25,25))
-        '''
-        dot = Digraph(comment='Test')
-        for v in self.g.vertices():
-            dot.node(self.vertex2label[v])
-            for n in v.out_neighbors():
-                dot.edge(self.vertex2label[v],self.vertex2label[n])
-
-        dot.render(view=True)
-        '''
 
 
 
@@ -377,13 +348,52 @@ class Graph_tool(Graph):
     def get_neighbors(self, v, dir='out'):
         assert dir in ['in', 'out', 'all'], 'Unsupported direction'
         if dir == 'out':
-            return self.g.get_out_neighbors()
+            return self.g.get_out_neighbors(v)
         if dir == 'in':
-            return self.g.get_in_neighbors()
+            return self.g.get_in_neighbors(v)
         if dir == 'all':
-            return self.g.get_all_neighbors()
-        
+            return self.g.get_all_neighbors(v)
 
+    def get_degree(self, v, dir='all'):
+        assert dir in ['in', 'out', 'all'], 'Unsupported direction'
+        if dir == 'out':
+            return self.g.get_out_degrees([v])[0]
+        if dir == 'in':
+            return self.g.get_in_degrees([v])[0]
+        if dir == 'all':
+            return self.g.get_total_degrees([v])[0]
+
+    def remove_vertices(self, vl):
+        self.g.remove_vertex(vl)
+        
+    def draw(self):
+        vprops = {
+            'text': self.vertex2label,
+            'font_size':16,
+            'size':1,
+            'text_color':'black'
+        }
+        eprops = {
+            'text': self.edge2label,
+            'pen_width':2,
+            'end_marker':'arrow',
+            'marker_size':12,
+        }
+        graph_draw(self.g, vprops=vprops, eprops=eprops, output_size=(2000, 2000))
+        #graphviz_draw(self.g, layout='sfdp', vprops=vprops, eprops=eprops, size=(25,25))
+        '''
+        dot = Digraph(comment='Test')
+        for v in self.g.vertices():
+            dot.node(self.vertex2label[v])
+            for n in v.out_neighbors():
+                dot.edge(self.vertex2label[v],self.vertex2label[n])
+
+        dot.render(view=True)
+        '''
+
+
+
+        
 class Networkx(Graph):
 
     def init(self, vertices):
@@ -442,16 +452,28 @@ class Networkx(Graph):
     def get_edges(self, v1, v2=None, dir='out'):
         if v2 == None:
             assert type(v1) == str or type(v1) == int, 'Unsupported vertex representation'
-            assert dir =='out', 'Unsupported edges direction'
+            assert dir in ['in', 'out', 'all'], 'Unsupported edges direction'
             if type(v1) == str:
                 w1 = self.label2vertex[v1]
             else:
                 w1 = v1
             if dir == 'out':
-                out = []
-                for key, val in self.g[w1].items():
-                    [ out.append([w1, key, lab['label']]) for lab in val.values()]
-                return out
+                e = []
+                for n in self.g.neighbors(w1):
+                    [ e.append([w1, n, lab['label']]) for lab in self.g[w1][n].values()]
+                return e
+            if dir == 'in':
+                e = []
+                for n in self.g.predecessors(w1):
+                    [ e.append([n, w1, lab['label']]) for lab in self.g[n][w1].values()]
+                return e
+            if dir == 'all':
+                e = []
+                for n in self.g.neighbors(w1):
+                    [ out.append([w1, n, lab['label']]) for lab in self.g[w1][n].values()]
+                for n in self.g.predecessors(w1):
+                    [ e.append([n, w1, lab['label']]) for lab in self.g[n][w1].values()]
+                return e
         else:                                                 
             assert type(v1) == type(v2), 'Different vertex representations passed'
             if type(v1) == str:
@@ -460,11 +482,39 @@ class Networkx(Graph):
             else:
                 w1 = v1
                 w2 = v2
-            return [ [w1, w2, lab['label']] for lab in self.g[w1][w2].values() ]
+            e = []
+            [ e.append([w1, w2, lab['label']]) for lab in self.g[w1][w2].values() ]
+            [ e.append([w2, w1, lab['label']]) for lab in self.g[w2][w1].values() ]
         
-    def get_neighbors(self, v, dir='out'):
-        assert dir == 'out', 'Unsupported direction'
+    def get_neighbors(self, v, dir='out'):         # networkx doesn't count multiple edges for neighbors, see below
+        assert dir in ['in', 'out', 'all'], 'Unsupported edges direction'
         if dir == 'out':
-                return [n for n in self.g[v].keys()]
+            return [n for n in self.g.neighbors(v) for i in range(len(self.g[v][n]))]   # double loop for counting multiple edges
+        if dir == 'in':
+            return [n for n in self.g.predecessors(v) for i in range(len(self.g[n][v]))]
+        if dir == 'all':
+            neigh = []
+            [neigh.append(n) for n in self.g.neighbors(v) for i in range(len(self.g[v][n]))]   
+            [neigh.append(n) for n in self.g.predecessors(v) for i in range(len(self.g[n][v]))]
+            return neigh
+
+    def get_degree(self, v, dir='all'):
+        assert dir in ['in', 'out', 'all'], 'Unsupported direction'
+        if dir == 'out':
+            return self.g.out_degree(v)
+        if dir == 'in':
+            return self.g.in_degree(v)
+        if dir == 'all':
+            return self.g.degree(v)
         
-        
+    def remove_vertices(self, vl):
+        self.g.remove_nodes_from(vl)
+
+    def draw(self):
+        plt.subplot()
+        #options = {
+         #   'labels' : self.vertex2label, 
+          #  'arrows' : True
+        #}
+        nx.draw_networkx(self.g, labels=self.vertex2label, arrows=True)
+        plt.show()

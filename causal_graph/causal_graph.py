@@ -40,10 +40,6 @@ with open('predicates.xml') as f:
     
 g = Graph_tool(vertices=preds)
 f = Networkx(vertices=preds)
-print(g.get_vertex('Procedures'))
-print('///////////// edges\n',g.get_edges('Procedures', dir='all'))
-#print(f.get_vertex(123))
-#print('///////////// edges\n',f.get_edges(123))
 
 
 #g.causal()
@@ -52,6 +48,7 @@ print('///////////// edges\n',g.get_edges('Procedures', dir='all'))
 #g.filter_by(method='redundancy', k=6)
 #g.merge_vertices(g.v_mapping['Disease'], g.v_mapping['Virus Diseases'])
 #g.draw()
+#f.draw()
 #g.json()
 
 
@@ -66,7 +63,7 @@ def cos(v1,v2):
 #v2 = embedding[g.v_mapping['Pharmaceutical Preparations']]
 #v2 = embedding[g.v_mapping['Antiviral Therapy']]
 
-print('Cosine similarity between node \'Procedures\' and:')
+#print('Cosine similarity between node \'Procedures\' and:')
 #for key, value in embedding.items():
     #print(g.verts_text[key],'-->',cos(v1,value))
 
