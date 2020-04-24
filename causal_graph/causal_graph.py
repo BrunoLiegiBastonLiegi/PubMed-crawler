@@ -50,7 +50,8 @@ f = Networkx(vertices=preds)
 #g.draw()
 #f.draw()
 #g.json()
-
+print(g.get_edges('Procedures', dir='all'))
+print(f.get_edges('Procedures', dir='all'))
 
 #embedding = g.deep_walk()
 

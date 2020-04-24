@@ -88,7 +88,7 @@ class Graph(ABC):
         pass
 
     @abstractmethod
-    def remove_edge(self):
+    def remove_edges(self, el):
         pass
     
     @abstractmethod
@@ -321,29 +321,34 @@ class Graph_tool(Graph):
         return self.g.get_vertices()
         
     def get_edges(self, v1, v2=None, dir='out'):
-
-        if v2 == None:
-            assert type(v1) == str or type(v1) == int, 'Unsupported vertex represenation'
-            assert dir in ['in', 'out', 'all'], 'Unsupported edges direction'
-            if type(v1) == str:
-                w1 = self.label2vertex[v1]
-            else:
-                w1 = self.g.vertex(v1)
-            if dir == 'out':
-                return self.g.get_out_edges(w1)
-            if dir == 'in':
-                return self.g.get_in_edges(w1)
-            if dir == 'all':
-                return self.g.get_all_edges(w1)
-        else:                                                 # warning here dir is not used, it returns always all edges (in & out)
-            assert type(v1) == type(v2), 'Different vertex representations passed'
-            if type(v1) == str:
-                w1 = self.label2vertex[v1]
-                w2 = self.label2vertex[v2]
-            else:
-                w1 = v1
-                w2 = v2
-            return self.g.edge(w1, w2, all_edges=True)
+        if v1 == None:
+            self.g.get_edges([self.edge2label])
+        else:
+            if v2 == None:
+                assert type(v1) == str or type(v1) == int, 'Unsupported vertex represenation'
+                assert dir in ['in', 'out', 'all'], 'Unsupported edges direction'
+                if type(v1) == str:
+                    w1 = self.label2vertex[v1]
+                else:
+                    w1 = self.g.vertex(v1)
+                if dir == 'out':
+                    return self.g.get_out_edges(w1, [self.edge2label])
+                if dir == 'in':
+                    return self.g.get_in_edges(w1, [self.edge2label])
+                if dir == 'all':
+                    return self.g.get_all_edges(w1, [self.edge2label])
+            else:                                                 # warning here dir is not used, it returns always all edges (in & out)
+                assert type(v1) == type(v2), 'Different vertex representations passed'
+                if type(v1) == str:
+                    w1 = self.label2vertex[v1]
+                    w2 = self.label2vertex[v2]
+                else:
+                    w1 = v1
+                    w2 = v2
+                tmp = self.g.edge(w1, w2, all_edges=True)
+                for i in tmp:
+                    print(i)
+                    print(self.edge2label[i])
         
     def get_neighbors(self, v, dir='out'):
         assert dir in ['in', 'out', 'all'], 'Unsupported direction'
@@ -365,6 +370,14 @@ class Graph_tool(Graph):
 
     def remove_vertices(self, vl):
         self.g.remove_vertex(vl)
+
+    def remove_edges(self, el):
+        for e in el:
+            tmp = self.g.edge(e[0], e[1], all_edges=True)
+            for i in tmp:
+                if self.edge2label[i] == e[2]:
+                    self.g.remove_edge(i)
+                    break
         
     def draw(self):
         vprops = {
@@ -429,16 +442,13 @@ class Networkx(Graph):
     def add_edge(self, edge, v1, v2, dir='straight'):
         assert dir in {'straight', 'inverted', 'bi'}, 'Unsupported edge direction'
         if dir == 'bi':
-            e = self.g.add_edge(v1, v2, label=edge)
-            #self.edge2label[e] = edge
-            e = self.g.add_edge(v2, v1, label=edge)
-            #self.edge2label[e] = edge
+            self.g.add_edge(v1, v2, label=edge)
+            self.g.add_edge(v2, v1, label=edge)
         else:
             if dir == 'straight':
-                e = self.g.add_edge(v1, v2, label=edge)
+                self.g.add_edge(v1, v2, label=edge)
             elif dir == 'inverted':
-                e = self.g.add_edge(v2, v1, label=edge)
-            #self.edge2label[e] = edge
+                self.g.add_edge(v2, v1, label=edge)
 
     def get_vertex(self, v):
         if type(v) == str:
@@ -449,42 +459,47 @@ class Networkx(Graph):
     def get_vertices(self):
         return [v for v in self.g]
         
-    def get_edges(self, v1, v2=None, dir='out'):
-        if v2 == None:
-            assert type(v1) == str or type(v1) == int, 'Unsupported vertex representation'
-            assert dir in ['in', 'out', 'all'], 'Unsupported edges direction'
-            if type(v1) == str:
-                w1 = self.label2vertex[v1]
-            else:
-                w1 = v1
-            if dir == 'out':
+    def get_edges(self, v1=None, v2=None, dir='out'):
+        if v1 == None:
+            e = [ [i[0], i[1], i[2]['label']] for i in list(self.g.edges(data=True)) ]
+            return e
+        else:
+            if v2 == None:
+                assert type(v1) == str or type(v1) == int, 'Unsupported vertex representation'
+                assert dir in ['in', 'out', 'all'], 'Unsupported edges direction'
+                if type(v1) == str:
+                    w1 = self.label2vertex[v1]
+                else:
+                    w1 = v1
+                if dir == 'out':
+                    e = []
+                    for n in self.g.neighbors(w1):
+                        [ e.append([w1, n, lab['label']]) for lab in self.g[w1][n].values()]
+                    return e
+                if dir == 'in':
+                    e = []
+                    for n in self.g.predecessors(w1):
+                        [ e.append([n, w1, lab['label']]) for lab in self.g[n][w1].values()]
+                    return e
+                if dir == 'all':
+                    e = []
+                    for n in self.g.neighbors(w1):
+                        [ e.append([w1, n, lab['label']]) for lab in self.g[w1][n].values()]
+                    for n in self.g.predecessors(w1):
+                        [ e.append([n, w1, lab['label']]) for lab in self.g[n][w1].values()]
+                    return e
+            else:                                                 
+                assert type(v1) == type(v2), 'Different vertex representations passed'
+                if type(v1) == str:
+                    w1 = self.label2vertex[v1]
+                    w2 = self.label2vertex[v2]
+                else:
+                    w1 = v1
+                    w2 = v2
                 e = []
-                for n in self.g.neighbors(w1):
-                    [ e.append([w1, n, lab['label']]) for lab in self.g[w1][n].values()]
+                [ e.append([w1, w2, lab['label']]) for lab in self.g[w1][w2].values() ]
+                [ e.append([w2, w1, lab['label']]) for lab in self.g[w2][w1].values() ]
                 return e
-            if dir == 'in':
-                e = []
-                for n in self.g.predecessors(w1):
-                    [ e.append([n, w1, lab['label']]) for lab in self.g[n][w1].values()]
-                return e
-            if dir == 'all':
-                e = []
-                for n in self.g.neighbors(w1):
-                    [ out.append([w1, n, lab['label']]) for lab in self.g[w1][n].values()]
-                for n in self.g.predecessors(w1):
-                    [ e.append([n, w1, lab['label']]) for lab in self.g[n][w1].values()]
-                return e
-        else:                                                 
-            assert type(v1) == type(v2), 'Different vertex representations passed'
-            if type(v1) == str:
-                w1 = self.label2vertex[v1]
-                w2 = self.label2vertex[v2]
-            else:
-                w1 = v1
-                w2 = v2
-            e = []
-            [ e.append([w1, w2, lab['label']]) for lab in self.g[w1][w2].values() ]
-            [ e.append([w2, w1, lab['label']]) for lab in self.g[w2][w1].values() ]
         
     def get_neighbors(self, v, dir='out'):         # networkx doesn't count multiple edges for neighbors, see below
         assert dir in ['in', 'out', 'all'], 'Unsupported edges direction'
@@ -510,6 +525,10 @@ class Networkx(Graph):
     def remove_vertices(self, vl):
         self.g.remove_nodes_from(vl)
 
+    def remove_edges(self, el):
+        for e in el:
+            self.g.remove_edge(e[0], e[1], label=e[2])
+        
     def draw(self):
         plt.subplot()
         #options = {
