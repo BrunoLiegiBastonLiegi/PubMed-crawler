@@ -136,13 +136,13 @@ class Graph(ABC):
             
 
     def causal(self):
-        causal_map = self.g.new_edge_property("bool")
-        for e in self.g.edges():
-            if self.edge2label[e] in self.causal_preds or self.edge2label[e] in self.bidir_preds:
-                causal_map[e] = True
+        del_list = []
+        for e in self.get_edges():
+            if e[2] in self.causal_preds or e[2] in self.bidir_preds:
+                pass
             else:
-                causal_map[e] = False
-        self.g.set_edge_filter(causal_map)
+                del_list.append(e)
+        self.remove_edges(del_list)
         self.clean()
 
     def co_occurrence(self, threshold):
@@ -320,9 +320,10 @@ class Graph_tool(Graph):
     def get_vertices(self):
         return self.g.get_vertices()
         
-    def get_edges(self, v1, v2=None, dir='out'):
+    def get_edges(self, v1=None, v2=None, dir='out'):
         if v1 == None:
-            self.g.get_edges([self.edge2label])
+            e = [ [self.g.vertex_index[i.source()], self.g.vertex_index[i.target()], self.edge2label[i]] for i in self.g.edges() ]
+            return e    
         else:
             if v2 == None:
                 assert type(v1) == str or type(v1) == int, 'Unsupported vertex represenation'
@@ -332,11 +333,11 @@ class Graph_tool(Graph):
                 else:
                     w1 = self.g.vertex(v1)
                 if dir == 'out':
-                    return self.g.get_out_edges(w1, [self.edge2label])
+                    return self.g.get_out_edges(w1)
                 if dir == 'in':
-                    return self.g.get_in_edges(w1, [self.edge2label])
+                    return self.g.get_in_edges(w1)
                 if dir == 'all':
-                    return self.g.get_all_edges(w1, [self.edge2label])
+                    return self.g.get_all_edges(w1)
             else:                                                 # warning here dir is not used, it returns always all edges (in & out)
                 assert type(v1) == type(v2), 'Different vertex representations passed'
                 if type(v1) == str:
@@ -345,10 +346,8 @@ class Graph_tool(Graph):
                 else:
                     w1 = v1
                     w2 = v2
-                tmp = self.g.edge(w1, w2, all_edges=True)
-                for i in tmp:
-                    print(i)
-                    print(self.edge2label[i])
+                e = [ [self.g.vertex_index[i.source()], self.g.vertex_index[i.target()], self.edge2label[i]] for i in self.g.edge(w1, w2, all_edges=True)]
+                return e
         
     def get_neighbors(self, v, dir='out'):
         assert dir in ['in', 'out', 'all'], 'Unsupported direction'
@@ -442,13 +441,13 @@ class Networkx(Graph):
     def add_edge(self, edge, v1, v2, dir='straight'):
         assert dir in {'straight', 'inverted', 'bi'}, 'Unsupported edge direction'
         if dir == 'bi':
-            self.g.add_edge(v1, v2, label=edge)
-            self.g.add_edge(v2, v1, label=edge)
+            self.g.add_edge(v1, v2, key=edge, label=edge)
+            self.g.add_edge(v2, v1, key=edge, label=edge)
         else:
             if dir == 'straight':
-                self.g.add_edge(v1, v2, label=edge)
+                self.g.add_edge(v1, v2, key=edge, label=edge)
             elif dir == 'inverted':
-                self.g.add_edge(v2, v1, label=edge)
+                self.g.add_edge(v2, v1, key=edge, label=edge)
 
     def get_vertex(self, v):
         if type(v) == str:
@@ -498,7 +497,7 @@ class Networkx(Graph):
                     w2 = v2
                 e = []
                 [ e.append([w1, w2, lab['label']]) for lab in self.g[w1][w2].values() ]
-                [ e.append([w2, w1, lab['label']]) for lab in self.g[w2][w1].values() ]
+                #[ e.append([w2, w1, lab['label']]) for lab in self.g[w2][w1].values() ] # considering only parallel edges from v1 to v2 and not viceversa
                 return e
         
     def get_neighbors(self, v, dir='out'):         # networkx doesn't count multiple edges for neighbors, see below
@@ -524,10 +523,11 @@ class Networkx(Graph):
         
     def remove_vertices(self, vl):
         self.g.remove_nodes_from(vl)
+        #self.g = nx.relabel.convert_node_labels_to_integers(self.g)
 
     def remove_edges(self, el):
         for e in el:
-            self.g.remove_edge(e[0], e[1], label=e[2])
+            self.g.remove_edge(e[0], e[1], key=e[2])
         
     def draw(self):
         plt.subplot()
