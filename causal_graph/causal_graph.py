@@ -42,7 +42,8 @@ g = Graph_tool(vertices=preds)
 f = Networkx(vertices=preds)
 
 
-#g.causal()
+g.causal()
+f.causal()
 #g.clustering()
 #g.filter_by('co-occurrence', threshold=0.01)
 #g.filter_by(method='redundancy', k=6)
@@ -50,8 +51,8 @@ f = Networkx(vertices=preds)
 #g.draw()
 #f.draw()
 #g.json()
-print(g.get_edges('Procedures', dir='all'))
-print(f.get_edges('Procedures', dir='all'))
+print(f.get_vertices())
+print(g.get_vertices())
 
 #embedding = g.deep_walk()
 
