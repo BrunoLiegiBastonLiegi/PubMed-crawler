@@ -41,16 +41,18 @@ with open('predicates.xml') as f:
 g = Graph_tool(vertices=preds)
 f = Networkx(vertices=preds)
 
-
+print('~~~~~~~~~~~~~~~ GRAPHTOOL')
 g.causal()
+print('~~~~~~~~~~~~~~~ NETWORKX')
 f.causal()
 #g.clustering()
 #g.filter_by('co-occurrence', threshold=0.01)
 #g.filter_by(method='redundancy', k=6)
 #g.merge_vertices(g.v_mapping['Disease'], g.v_mapping['Virus Diseases'])
-#g.draw()
-#f.draw()
+g.draw()
+f.draw()
 #g.json()
+
 print(f.get_vertices())
 print(g.get_vertices())
 

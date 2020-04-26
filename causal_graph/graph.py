@@ -523,7 +523,12 @@ class Networkx(Graph):
         
     def remove_vertices(self, vl):
         self.g.remove_nodes_from(vl)
-        #self.g = nx.relabel.convert_node_labels_to_integers(self.g)
+        vertices = []
+        for e in self.get_edges():
+            source = self.get_vertex(e[0])
+            target = [self.get_vertex(e[1])]
+            vertices.append(Vertex(source, [e[2]], target))
+        self.__init__(vertices=vertices)
 
     def remove_edges(self, el):
         for e in el:
