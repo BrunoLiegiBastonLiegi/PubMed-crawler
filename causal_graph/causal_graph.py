@@ -41,7 +41,7 @@ with open('predicates.xml') as f:
 g = Graph_tool(vertices=preds)
 f = Networkx(vertices=preds)
 
-g.causal()
+#g.causal()
 f.causal()
 #g.clustering()
 #g.filter_by('co-occurrence', threshold=0.01)
@@ -49,10 +49,7 @@ f.causal()
 #g.merge_vertices(g.v_mapping['Disease'], g.v_mapping['Virus Diseases'])
 #g.draw()
 #f.draw()
-g.json()
-
-print(len(f.get_edges()))
-print(len(g.get_edges()))
+f.json()
 
 #embedding = g.deep_walk()
 
