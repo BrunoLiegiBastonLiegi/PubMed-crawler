@@ -217,11 +217,10 @@ class Graph(ABC):
 
         weights = embedding.get_weights()
         #print(weights[0].shape)
-        print(vocab)
         self.embedding = {}
         for n in vocab:
-            text = self.get_vertex(n)
-            print(n, '-->', text, '-->', self.g.vertex_index[self.label2vertex[text]])
+            text = self.vertex2label[n]
+            print(n, '-->', text, '-->', self.label2vertex[text])
             self.embedding[self.g.vertex(n)] = weights[0][n]
 
         return self.embedding
@@ -238,14 +237,14 @@ class Graph(ABC):
             self.g.remove_edge(e)
         self.g.remove_vertex(v1)
 
-    def json(self):
+    def json(self, file='graph.json'):
         nodes = []
         links = []
         for v in self.get_vertices():
-            nodes.append({"id": self.get_vertex(v), "cluster": 1, "category": 'category'})
+            nodes.append({"id": self.get_vertex(v), "cluster": 1, "category": 'cat', "degree": self.get_degree(v)})
         for e in self.get_edges():
             links.append({"source": self.get_vertex(e[0]), "target": self.get_vertex(e[1]), "label": e[2], "weight": e[3]})
-        with open('graph.json', 'w') as f:
+        with open(file, 'w') as f:
             f.write('{\n\t\"nodes\": [\n')
             for n in range(len(nodes)):
                 f.write('\t\t')
@@ -373,8 +372,14 @@ class Graph_tool(Graph):
             return self.g.get_total_degrees([v])[0]
 
     def remove_vertices(self, vl):
+        tmp = [ self.vertex2label[v] for v in vl ]
         self.g.remove_vertex(vl)
-
+        # fixing the dictionary
+        for i in tmp:
+            del self.label2vertex[i]
+        for v in self.get_vertices():
+            self.label2vertex[self.vertex2label[v]] = v
+            
     def remove_edges(self, el):
         for e in el:
             tmp = self.g.edge(e[0], e[1], all_edges=True)
