@@ -37,24 +37,22 @@ with open('predicates.xml') as f:
 
 #print('\n', len(preds), ' predications found')
 
-    
+
 g = Graph_tool(vertices=preds)
 f = Networkx(vertices=preds)
 
-print('~~~~~~~~~~~~~~~ GRAPHTOOL')
 g.causal()
-print('~~~~~~~~~~~~~~~ NETWORKX')
 f.causal()
 #g.clustering()
 #g.filter_by('co-occurrence', threshold=0.01)
 #g.filter_by(method='redundancy', k=6)
 #g.merge_vertices(g.v_mapping['Disease'], g.v_mapping['Virus Diseases'])
-g.draw()
-f.draw()
-#g.json()
+#g.draw()
+#f.draw()
+g.json()
 
-print(f.get_vertices())
-print(g.get_vertices())
+print(len(f.get_edges()))
+print(len(g.get_edges()))
 
 #embedding = g.deep_walk()
 

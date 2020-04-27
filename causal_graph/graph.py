@@ -241,10 +241,10 @@ class Graph(ABC):
     def json(self):
         nodes = []
         links = []
-        for v in self.g.vertices():
-            nodes.append({"id": self.vertex2label[v], "group": 1})
-        for e in self.g.edges():
-            links.append({"source": self.vertex2label[e.source()], "target": self.vertex2label[e.target()], "value": 1})
+        for v in self.get_vertices():
+            nodes.append({"id": self.get_vertex(v), "cluster": 1, "category": 'category'})
+        for e in self.get_edges():
+            links.append({"source": self.get_vertex(e[0]), "target": self.get_vertex(e[1]), "label": e[2], "weight": e[3]})
         with open('graph.json', 'w') as f:
             f.write('{\n\t\"nodes\": [\n')
             for n in range(len(nodes)):
@@ -274,6 +274,7 @@ class Graph_tool(Graph):
         self.g = gt.Graph()
         self.vertex2label = self.g.new_vertex_property("string")
         self.edge2label = self.g.new_edge_property("string")
+        self.edge2weight = self.g.new_edge_property("int")
         if vertices !=None:
             [self.add_vertex(v) for v in vertices]
 
@@ -299,30 +300,34 @@ class Graph_tool(Graph):
 
     def add_edge(self, edge, v1, v2, dir='straight'):
         assert dir in {'straight', 'inverted', 'bi'}, 'Unsupported edge direction'
-        if dir == 'bi':
+        if dir == 'inverted':
+            return self.add_edge(edge, v2, v1)
+        w = 1
+        for e in self.g.edge(v1, v2, all_edges=True):
+            if edge == self.edge2label[e]:
+                w = self.edge2weight[e] + 1
+                break
+        if w == 1:
             e = self.g.add_edge(v1, v2)
             self.edge2label[e] = edge
-            e = self.g.add_edge(v2, v1)
-            self.edge2label[e] = edge
+            self.edge2weight[e] = w
         else:
-            if dir == 'straight':
-                e = self.g.add_edge(v1, v2)
-            elif dir == 'inverted':
-                e = self.g.add_edge(v2, v1)
-            self.edge2label[e] = edge
+            self.edge2weight[e] = w
+        if dir == 'bi':
+            return self.add_edge(edge, v2, v1)
 
     def get_vertex(self, v):
         if type(v) == str:
             return self.label2vertex[v]
         if type(v) == int:
-            return self.g.vertex(v)
+            return self.vertex2label[v]
 
     def get_vertices(self):
-        return self.g.get_vertices()
+        return [int(v) for v in self.g.get_vertices()]
         
     def get_edges(self, v1=None, v2=None, dir='out'):
         if v1 == None:
-            e = [ [self.g.vertex_index[i.source()], self.g.vertex_index[i.target()], self.edge2label[i]] for i in self.g.edges() ]
+            e = [ [self.g.vertex_index[i.source()], self.g.vertex_index[i.target()], self.edge2label[i], self.edge2weight[i]] for i in self.g.edges() ]
             return e    
         else:
             if v2 == None:
@@ -346,7 +351,7 @@ class Graph_tool(Graph):
                 else:
                     w1 = v1
                     w2 = v2
-                e = [ [self.g.vertex_index[i.source()], self.g.vertex_index[i.target()], self.edge2label[i]] for i in self.g.edge(w1, w2, all_edges=True)]
+                e = [ [self.g.vertex_index[i.source()], self.g.vertex_index[i.target()], self.edge2label[i], self.edge2weight[i]] for i in self.g.edge(w1, w2, all_edges=True)]
                 return e
         
     def get_neighbors(self, v, dir='out'):
@@ -440,14 +445,15 @@ class Networkx(Graph):
 
     def add_edge(self, edge, v1, v2, dir='straight'):
         assert dir in {'straight', 'inverted', 'bi'}, 'Unsupported edge direction'
+        if dir == 'inverted':
+            return self.add_edge(edge, v2, v1)
+        try:
+            w = self.g[v1][v2][edge]['weight'] + 1
+        except:
+            w = 1
+        self.g.add_edge(v1, v2, key=edge, label=edge, weight=w)
         if dir == 'bi':
-            self.g.add_edge(v1, v2, key=edge, label=edge)
-            self.g.add_edge(v2, v1, key=edge, label=edge)
-        else:
-            if dir == 'straight':
-                self.g.add_edge(v1, v2, key=edge, label=edge)
-            elif dir == 'inverted':
-                self.g.add_edge(v2, v1, key=edge, label=edge)
+            return self.add_edge(edge, v2, v1)
 
     def get_vertex(self, v):
         if type(v) == str:
@@ -460,7 +466,7 @@ class Networkx(Graph):
         
     def get_edges(self, v1=None, v2=None, dir='out'):
         if v1 == None:
-            e = [ [i[0], i[1], i[2]['label']] for i in list(self.g.edges(data=True)) ]
+            e = [ [i[0], i[1], i[2]['label'], i[2]['weight']] for i in list(self.g.edges(data=True)) ]
             return e
         else:
             if v2 == None:
@@ -496,7 +502,7 @@ class Networkx(Graph):
                     w1 = v1
                     w2 = v2
                 e = []
-                [ e.append([w1, w2, lab['label']]) for lab in self.g[w1][w2].values() ]
+                [ e.append([w1, w2, val['label'], val['weight']]) for val in self.g[w1][w2].values() ]
                 #[ e.append([w2, w1, lab['label']]) for lab in self.g[w2][w1].values() ] # considering only parallel edges from v1 to v2 and not viceversa
                 return e
         
