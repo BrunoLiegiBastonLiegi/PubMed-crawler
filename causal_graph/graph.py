@@ -46,7 +46,7 @@ class Graph(ABC):
         self.g = None
         self.vertex2label = None
         self.edge2label = None
-        self.label2vertex = {}
+        self.label2vertex = None
         self.bidir_preds = ['COEXISTS_WITH','ASSOCIATED_WITH']
         self.causal_preds = ['CAUSES','PREVENTS','DISRUPTS','INHIBITS','PREDISPOSES','PRODUCES']
         self.init(vertices)
@@ -271,6 +271,7 @@ class Graph_tool(Graph):
     def init(self, vertices=None):
         
         self.g = gt.Graph()
+        self.label2vertex = {}
         self.vertex2label = self.g.new_vertex_property("string")
         self.edge2label = self.g.new_edge_property("string")
         self.edge2weight = self.g.new_edge_property("int")
@@ -420,6 +421,7 @@ class Networkx(Graph):
 
     def init(self, vertices):
         self.g = nx.MultiDiGraph()
+        self.label2vertex = {}
         self.vertex2label = {}
         self.edge2label = {}
         if vertices != None:
@@ -432,7 +434,7 @@ class Networkx(Graph):
             v_i = self.g.number_of_nodes() 
             self.g.add_node(v_i, label=vertex.me)
             self.label2vertex[vertex.me] = v_i
-            self.vertex2label[v_i] = vertex.me
+            #self.vertex2label[v_i] = vertex.me
 
         v_f = []
         index = self.g.number_of_nodes()
@@ -441,8 +443,9 @@ class Networkx(Graph):
                 v_f.append(self.label2vertex[n])
             except:
                 v_f.append(index)
+                self.g.add_node(index, label=n)
                 self.label2vertex[n] = index
-                self.vertex2label[index] = n
+                #self.vertex2label[index] = n
                 index += 1
 
         for j in range(len(vertex.edges)):
@@ -464,7 +467,8 @@ class Networkx(Graph):
         if type(v) == str:
             return self.label2vertex[v]
         if type(v) == int:
-            return self.vertex2label[v]
+            return self.g.nodes[v]['label']
+            #return self.vertex2label[v]
 
     def get_vertices(self):
         return [v for v in self.g]
@@ -533,12 +537,15 @@ class Networkx(Graph):
             return self.g.degree(v)
         
     def remove_vertices(self, vl):
-        self.g.remove_nodes_from(vl)
+        self.g.remove_nodes_from(vl)  
         vertices = []
         for e in self.get_edges():
             source = self.get_vertex(e[0])
             target = [self.get_vertex(e[1])]
-            vertices.append(Vertex(source, [e[2]], target))
+            if e[2] in self.bidir_preds:
+                [ vertices.append(Vertex(source, [e[2]], target)) for i in range(int(e[3]/2)) ] # I need to divide the weight by 2, cause when I add a bidirectional edge the add_edge() method is called twice
+            else:
+                [ vertices.append(Vertex(source, [e[2]], target)) for i in range(e[3]) ]
         self.__init__(vertices=vertices)
 
     def remove_edges(self, el):
