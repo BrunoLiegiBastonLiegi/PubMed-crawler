@@ -100,7 +100,7 @@ class Graph(ABC):
         for v in self.get_vertices():
             if self.get_degree(v) < 1:
                 vl.append(v)
-        self.remove_vertices(vl)
+        self.remove_vertices(vl)  
     
     def redundancy(self, k=2):
         redundancy_map = self.g.new_edge_property("bool") # have to use filtering cause removal was causing core dumped
@@ -330,20 +330,28 @@ class Graph_tool(Graph):
             e = [ [self.g.vertex_index[i.source()], self.g.vertex_index[i.target()], self.edge2label[i], self.edge2weight[i]] for i in self.g.edges() ]
             return e    
         else:
+            assert type(v1) == str or type(v1) == int, 'Unsupported vertex represenation'
             if v2 == None:
-                assert type(v1) == str or type(v1) == int, 'Unsupported vertex represenation'
                 assert dir in ['in', 'out', 'all'], 'Unsupported edges direction'
                 if type(v1) == str:
-                    w1 = self.label2vertex[v1]
+                    w1 = int(self.label2vertex[v1])
                 else:
-                    w1 = self.g.vertex(v1)
+                    w1 = v1 #w1 = self.g.vertex(v1)
                 if dir == 'out':
-                    return self.g.get_out_edges(w1)
+                    e = [ed for n in self.get_neighbors(w1) for ed in self.get_edges(w1,int(n))]
+                    return e
+                    #return self.g.get_out_edges(w1, eprops=[self.edge2weight]) # the label cannot be obtained for some reason... eprops=[self.edge2label] cause an error
                 if dir == 'in':
-                    return self.g.get_in_edges(w1)
+                    e = [ed for n in self.get_neighbors(w1, dir='in') for ed in self.get_edges(int(n),w1)]
+                    return e
+                    #return self.g.get_in_edges(w1, eprops=[self.edge2weight])
                 if dir == 'all':
-                    return self.g.get_all_edges(w1)
-            else:                                                 # warning here dir is not used, it returns always all edges (in & out)
+                    e = []
+                    [e.append(i) for i in self.get_edges(w1,dir='in')]
+                    [e.append(i) for i in self.get_edges(w1,dir='out')]
+                    return e
+                    #return self.g.get_all_edges(w1, eprops=[self.edge2weight])
+            else:                                                 # warning here dir is not used, it returns always only edges from v1 to v2
                 assert type(v1) == type(v2), 'Different vertex representations passed'
                 if type(v1) == str:
                     w1 = self.label2vertex[v1]
@@ -356,12 +364,16 @@ class Graph_tool(Graph):
         
     def get_neighbors(self, v, dir='out'):
         assert dir in ['in', 'out', 'all'], 'Unsupported direction'
+        neighbors = []
         if dir == 'out':
-            return self.g.get_out_neighbors(v)
+            [ neighbors.append(n) if n not in neighbors else None for n in self.g.get_out_neighbors(v) ]
+            return neighbors
         if dir == 'in':
-            return self.g.get_in_neighbors(v)
+            [ neighbors.append(n) if n not in neighbors else None for n in self.g.get_in_neighbors(v) ]
+            return neighbors
         if dir == 'all':
-            return self.g.get_all_neighbors(v)
+            [ neighbors.append(n) if n not in neighbors else None for n in self.g.get_all_neighbors(v) ]
+            return neighbors
 
     def get_degree(self, v, dir='all'):
         assert dir in ['in', 'out', 'all'], 'Unsupported direction'
@@ -488,19 +500,19 @@ class Networkx(Graph):
                 if dir == 'out':
                     e = []
                     for n in self.g.neighbors(w1):
-                        [ e.append([w1, n, lab['label']]) for lab in self.g[w1][n].values()]
+                        [ e.append([w1, n, val['label'], val['weight']]) for val in self.g[w1][n].values()]
                     return e
                 if dir == 'in':
                     e = []
                     for n in self.g.predecessors(w1):
-                        [ e.append([n, w1, lab['label']]) for lab in self.g[n][w1].values()]
+                        [ e.append([n, w1, val['label'], val['weight']]) for val in self.g[n][w1].values()]
                     return e
                 if dir == 'all':
                     e = []
                     for n in self.g.neighbors(w1):
-                        [ e.append([w1, n, lab['label']]) for lab in self.g[w1][n].values()]
+                        [ e.append([w1, n, val['label'], val['weight']]) for val in self.g[w1][n].values()]
                     for n in self.g.predecessors(w1):
-                        [ e.append([n, w1, lab['label']]) for lab in self.g[n][w1].values()]
+                        [ e.append([n, w1, val['label'], val['weight']]) for val in self.g[n][w1].values()]
                     return e
             else:                                                 
                 assert type(v1) == type(v2), 'Different vertex representations passed'
@@ -539,11 +551,16 @@ class Networkx(Graph):
     def remove_vertices(self, vl):
         self.g.remove_nodes_from(vl)  
         vertices = []
+        mem = {} # I need to keep memory of already added bidirectional preds in order to not add the inverse too
         for e in self.get_edges():
             source = self.get_vertex(e[0])
             target = [self.get_vertex(e[1])]
             if e[2] in self.bidir_preds:
-                [ vertices.append(Vertex(source, [e[2]], target)) for i in range(int(e[3]/2)) ] # I need to divide the weight by 2, cause when I add a bidirectional edge the add_edge() method is called twice
+                mem[source+'-'+e[2]+'-'+target[0]] = True
+                try:
+                    mem[target[0]+'-'+e[2]+'-'+source] # checking the memory
+                except:
+                    [ vertices.append(Vertex(source, [e[2]], target)) for i in range(e[3]) ] 
             else:
                 [ vertices.append(Vertex(source, [e[2]], target)) for i in range(e[3]) ]
         self.__init__(vertices=vertices)

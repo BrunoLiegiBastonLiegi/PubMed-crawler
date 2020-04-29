@@ -52,7 +52,42 @@ f.causal()
 g.json('g.json')
 f.json('f.json')
 
- 
+#dg = g.get_edges()
+#df = f.get_edges()
+
+dg = g.get_vertices()
+df = f.get_vertices()
+
+tmp = []
+
+'''
+for i in df:
+    tmp.append(str(f.get_vertex(i[0]))+' - '+str(f.get_vertex(i[1]))+' - '+i[2]+' - '+str(i[3]))
+print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~`')
+for i in dg:
+    print(str(g.get_vertex(i[0]))+' - '+str(g.get_vertex(i[1]))+' - '+i[2]+' - '+str(i[3]) in tmp)
+
+
+for i in df:
+    tmp.append(str(f.get_vertex(i)))
+print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~`')
+for i in dg:
+    if str(g.get_vertex(i)) not in tmp:
+        print(g.get_vertex(i))
+'''
+
+
+c=0
+for i in g.get_edges('Virus Diseases', dir='all'):
+    print(g.get_vertex(i[0]),' - ', g.get_vertex(i[1]), ' - ', i[2], ' - ', i[3])
+    c+=1
+print(c)
+print('\n')
+c=0
+for i in f.get_edges('Virus Diseases', dir='all'):
+    print(f.get_vertex(i[0]),' - ', f.get_vertex(i[1]), ' - ', i[2], ' - ', i[3])
+    c+=1
+print(c)
 #embedding = g.deep_walk()
 
 def cos(v1,v2):
