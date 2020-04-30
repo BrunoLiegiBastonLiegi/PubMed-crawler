@@ -80,10 +80,6 @@ class Graph(ABC):
         pass
 
     @abstractmethod
-    def get_degree(self, v, dir='all'):
-        pass
-    
-    @abstractmethod
     def remove_vertices(self, vl):
         pass
 
@@ -94,6 +90,13 @@ class Graph(ABC):
     @abstractmethod
     def draw(self):
         pass
+
+    def get_degree(self, v, dir='all'):
+        assert dir in ['in', 'out', 'all'], 'Unsupported direction'
+        deg = 0
+        for e in self.get_edges(v, dir=dir):
+            deg += e[3]
+        return deg
 
     def clean(self):
         vl = []
@@ -134,7 +137,6 @@ class Graph(ABC):
         if method == 'redundancy':
             return self.redundancy(**kwargs)
             
-
     def causal(self):
         del_list = []
         for e in self.get_edges():
@@ -167,8 +169,13 @@ class Graph(ABC):
         #start = v
         walk = [v]
         for i in range(length):
-            neighbors = [n for n in self.get_neighbors(walk[-1])]
+            neighbors = []
+            for n in self.get_neighbors(walk[-1]):
+                for e in self.get_edges(walk[-1], n):
+                    for i in range(e[3]):
+                        neighbors.append(n)
             if len(neighbors) != 0:
+                random.shuffle(neighbors)
                 walk.append(random.choice(neighbors))
             else:
                 #walk.append(start)
@@ -177,8 +184,8 @@ class Graph(ABC):
 
     def deep_walk(self, walk_length=20, window=5, embedding_dim=100):
         corpus = []
-        vocab = self.g.get_vertices()
-        for i in range(3):
+        vocab = self.get_vertices()
+        for i in range(30):
             #random.shuffle(vocab)
             for j in range(len(vocab)):
                 corpus.append(self.random_walk(v=random.choice(vocab)))
@@ -219,9 +226,7 @@ class Graph(ABC):
         #print(weights[0].shape)
         self.embedding = {}
         for n in vocab:
-            text = self.vertex2label[n]
-            print(n, '-->', text, '-->', self.label2vertex[text])
-            self.embedding[self.g.vertex(n)] = weights[0][n]
+            self.embedding[n] = weights[0][n]
 
         return self.embedding
         
@@ -366,23 +371,14 @@ class Graph_tool(Graph):
         assert dir in ['in', 'out', 'all'], 'Unsupported direction'
         neighbors = []
         if dir == 'out':
-            [ neighbors.append(n) if n not in neighbors else None for n in self.g.get_out_neighbors(v) ]
+            [ neighbors.append(int(n)) if n not in neighbors else None for n in self.g.get_out_neighbors(v) ]
             return neighbors
         if dir == 'in':
-            [ neighbors.append(n) if n not in neighbors else None for n in self.g.get_in_neighbors(v) ]
+            [ neighbors.append(int(n)) if n not in neighbors else None for n in self.g.get_in_neighbors(v) ]
             return neighbors
         if dir == 'all':
-            [ neighbors.append(n) if n not in neighbors else None for n in self.g.get_all_neighbors(v) ]
+            [ neighbors.append(int(n)) if n not in neighbors else None for n in self.g.get_all_neighbors(v) ]
             return neighbors
-
-    def get_degree(self, v, dir='all'):
-        assert dir in ['in', 'out', 'all'], 'Unsupported direction'
-        if dir == 'out':
-            return self.g.get_out_degrees([v])[0]
-        if dir == 'in':
-            return self.g.get_in_degrees([v])[0]
-        if dir == 'all':
-            return self.g.get_total_degrees([v])[0]
 
     def remove_vertices(self, vl):
         tmp = [ self.vertex2label[v] for v in vl ]
@@ -527,26 +523,17 @@ class Networkx(Graph):
                 #[ e.append([w2, w1, lab['label']]) for lab in self.g[w2][w1].values() ] # considering only parallel edges from v1 to v2 and not viceversa
                 return e
         
-    def get_neighbors(self, v, dir='out'):         # networkx doesn't count multiple edges for neighbors, see below
+    def get_neighbors(self, v, dir='out'):         
         assert dir in ['in', 'out', 'all'], 'Unsupported edges direction'
         if dir == 'out':
-            return [n for n in self.g.neighbors(v) for i in range(len(self.g[v][n]))]   # double loop for counting multiple edges
+            return [n for n in self.g.neighbors(v)]   
         if dir == 'in':
-            return [n for n in self.g.predecessors(v) for i in range(len(self.g[n][v]))]
+            return [n for n in self.g.predecessors(v)]
         if dir == 'all':
             neigh = []
-            [neigh.append(n) for n in self.g.neighbors(v) for i in range(len(self.g[v][n]))]   
-            [neigh.append(n) for n in self.g.predecessors(v) for i in range(len(self.g[n][v]))]
+            [neigh.append(n) for n in self.g.neighbors(v) ]   
+            [neigh.append(n) for n in self.g.predecessors(v) ]
             return neigh
-
-    def get_degree(self, v, dir='all'):
-        assert dir in ['in', 'out', 'all'], 'Unsupported direction'
-        if dir == 'out':
-            return self.g.out_degree(v)
-        if dir == 'in':
-            return self.g.in_degree(v)
-        if dir == 'all':
-            return self.g.degree(v)
         
     def remove_vertices(self, vl):
         self.g.remove_nodes_from(vl)  

@@ -49,57 +49,30 @@ f.causal()
 #g.merge_vertices(g.v_mapping['Disease'], g.v_mapping['Virus Diseases'])
 #g.draw()
 #f.draw()
-g.json('g.json')
-f.json('f.json')
+#g.json('g.json')
+#f.json('f.json')
 
-#dg = g.get_edges()
-#df = f.get_edges()
 
-dg = g.get_vertices()
-df = f.get_vertices()
-
-tmp = []
 
 '''
-for i in df:
-    tmp.append(str(f.get_vertex(i[0]))+' - '+str(f.get_vertex(i[1]))+' - '+i[2]+' - '+str(i[3]))
-print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~`')
-for i in dg:
-    print(str(g.get_vertex(i[0]))+' - '+str(g.get_vertex(i[1]))+' - '+i[2]+' - '+str(i[3]) in tmp)
-
-
-for i in df:
-    tmp.append(str(f.get_vertex(i)))
-print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~`')
-for i in dg:
-    if str(g.get_vertex(i)) not in tmp:
-        print(g.get_vertex(i))
-'''
-
-
-c=0
-for i in g.get_edges('Virus Diseases', dir='all'):
-    print(g.get_vertex(i[0]),' - ', g.get_vertex(i[1]), ' - ', i[2], ' - ', i[3])
-    c+=1
-print(c)
+for n in g.get_neighbors(g.get_vertex('Virus Diseases')):
+    print(g.get_vertex(int(n)))
 print('\n')
-c=0
-for i in f.get_edges('Virus Diseases', dir='all'):
-    print(f.get_vertex(i[0]),' - ', f.get_vertex(i[1]), ' - ', i[2], ' - ', i[3])
-    c+=1
-print(c)
-#embedding = g.deep_walk()
+for n in f.get_neighbors(f.get_vertex('Virus Diseases')):
+    print(f.get_vertex(n))
+'''
+embedding = g.deep_walk()
 
 def cos(v1,v2):
     n1 = np.sqrt(np.dot(v1,v1))
     n2 = np.sqrt(np.dot(v2,v2))
     return np.dot(v1,v2)/(n1*n2)
 
-#v1 = embedding[g.label2vertex['Procedures']]
-#v2 = embedding[g.v_mapping['Pharmaceutical Preparations']]
-#v2 = embedding[g.v_mapping['Antiviral Therapy']]
+v1 = embedding[g.get_vertex('Virus Diseases')]
+v2 = embedding[g.get_vertex('Pharmaceutical Preparations')]
+v2 = embedding[g.get_vertex('Antiviral Therapy')]
 
-#print('Cosine similarity between node \'Procedures\' and:')
-#for key, value in embedding.items():
-    #print(g.verts_text[key],'-->',cos(v1,value))
+print('Cosine similarity between node \'Procedures\' and:')
+for key, value in embedding.items():
+    print(g.get_vertex(key),'-->',cos(v1,value))
 
