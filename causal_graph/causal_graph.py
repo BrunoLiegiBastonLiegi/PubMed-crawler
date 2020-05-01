@@ -54,14 +54,16 @@ f.causal()
 
 
 
-'''
-for n in g.get_neighbors(g.get_vertex('Virus Diseases')):
-    print(g.get_vertex(int(n)))
-print('\n')
+#for n in g.get_neighbors(g.get_vertex('Virus Diseases')):
+#    print(g.get_vertex(int(n)))
 for n in f.get_neighbors(f.get_vertex('Virus Diseases')):
     print(f.get_vertex(n))
-'''
-embedding = g.deep_walk()
+
+#embedding = g.deep_walk()
+#embedding = f.deep_walk()
+f.filter_by('co-occurrence', threshold=0.05)
+f.draw()
+
 
 def cos(v1,v2):
     n1 = np.sqrt(np.dot(v1,v1))
@@ -69,10 +71,11 @@ def cos(v1,v2):
     return np.dot(v1,v2)/(n1*n2)
 
 v1 = embedding[g.get_vertex('Virus Diseases')]
-v2 = embedding[g.get_vertex('Pharmaceutical Preparations')]
-v2 = embedding[g.get_vertex('Antiviral Therapy')]
+#v1 = embedding[f.get_vertex('Virus Diseases')]
+#v2 = embedding[g.get_vertex('Pharmaceutical Preparations')]
+#v2 = embedding[g.get_vertex('Antiviral Therapy')]
 
-print('Cosine similarity between node \'Procedures\' and:')
 for key, value in embedding.items():
-    print(g.get_vertex(key),'-->',cos(v1,value))
+    #print(g.get_vertex(key),'-->',cos(v1,value))
+    print(f.get_vertex(key),'-->',cos(v1,value))
 
