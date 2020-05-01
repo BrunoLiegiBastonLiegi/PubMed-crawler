@@ -105,7 +105,7 @@ class Graph(ABC):
                 vl.append(v)
         self.remove_vertices(vl)  
     
-    def redundancy(self, k=2):
+    def redundancy(self, k=2): # to be fixed!
         redundancy_map = self.g.new_edge_property("bool") # have to use filtering cause removal was causing core dumped
         for v in self.g.vertices():
             dict = {}
@@ -147,20 +147,17 @@ class Graph(ABC):
         self.remove_edges(del_list)
         self.clean()
 
-    def co_occurrence(self, threshold):
-        co_map = self.g.new_edge_property("bool")
-        for v in self.g.vertices():
-            for n in v.out_neighbors():
-                edges = self.g.edge(v, n, all_edges=True)
+    def co_occurrence(self, threshold): # to be fixed!
+        del_list = []
+        for v in self.get_vertices():
+            for n in self.get_neighbors(v):
+                edges = self.get_edges(v, n)
                 #print(float(len(edges)/(self.g.get_total_degrees([v])[0] + self.g.get_total_degrees([n])[0])))
-                if float(len(edges)/(self.g.get_total_degrees([v])[0] + self.g.get_total_degrees([n])[0])) > threshold:
-                    for e in edges:
-                        co_map[e] = True
+                if float(len(edges)/(self.get_degree(v) + self.get_degree(n))) > threshold:
+                    pass
                 else:
-                    for e in edges:
-                        co_map[e] = False
-                        
-        self.g.set_edge_filter(co_map)
+                    [del_list.append(e) for e in edges]
+        self.remove_edges(del_list)
         self.clean()
 
     def random_walk(self, v=None, length=20):
@@ -170,25 +167,41 @@ class Graph(ABC):
         walk = [v]
         for i in range(length):
             neighbors = []
+            for e in self.get_edges(walk[-1], dir='out'):
+                for i in range(e[3]):
+                    neighbors.append([e[2], e[1]])
+            '''
             for n in self.get_neighbors(walk[-1]):
                 for e in self.get_edges(walk[-1], n):
                     for i in range(e[3]):
                         neighbors.append(n)
+            '''
             if len(neighbors) != 0:
                 random.shuffle(neighbors)
-                walk.append(random.choice(neighbors))
+                [walk.append(i) for i in random.choice(neighbors)]
             else:
                 #walk.append(start)
                 break
         return walk
 
     def deep_walk(self, walk_length=20, window=5, embedding_dim=100):
+        # preparing vacobulary and corpus
         corpus = []
         vocab = self.get_vertices()
+        edges_vocab = {} # using also edges with their relative label in the embedding
         for i in range(30):
             #random.shuffle(vocab)
             for j in range(len(vocab)):
-                corpus.append(self.random_walk(v=random.choice(vocab)))
+                sent = self.random_walk(v=random.choice(vocab))
+                for i, e in enumerate(sent[1::2]):
+                    try:
+                        sent[2*i+1] = edges_vocab[e]
+                    except:
+                        edges_vocab[e] = len(vocab) + len(edges_vocab.keys())
+                        sent[2*i+1] = edges_vocab[e]
+                corpus.append(sent)
+        for val in edges_vocab.values():
+            vocab.append(val)
 
         # skipgram with negative sampling
         vocab_size = len(vocab)
@@ -225,22 +238,11 @@ class Graph(ABC):
         weights = embedding.get_weights()
         #print(weights[0].shape)
         self.embedding = {}
+        vocab = vocab[:-len(edges_vocab.keys())]
         for n in vocab:
             self.embedding[n] = weights[0][n]
 
         return self.embedding
-        
-    def merge_vertices(self, v1, v2):         # not working, why??????
-        del_list = []
-        for e in v1.out_edges():
-            self.add_edge(self.edge2label[e], v2, e.target())
-            del_list.append(e)
-        for e in v1.in_edges():
-            self.add_edge(self.edge2label[e], e.source(), v2)
-            del_list.append(e)
-        for e in reversed(sorted(del_list)):
-            self.g.remove_edge(e)
-        self.g.remove_vertex(v1)
 
     def json(self, file='graph.json'):
         nodes = []
