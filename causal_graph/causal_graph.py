@@ -1,5 +1,5 @@
 from bs4 import BeautifulSoup
-from graph import Vertex, Graph
+from graph import Vertex, Graph, Graph_tool, Networkx
 #from gensim.models import Word2Vec
 import numpy as np
 
@@ -37,29 +37,45 @@ with open('predicates.xml') as f:
 
 #print('\n', len(preds), ' predications found')
 
-    
-g = Graph(vertices=preds)
+
+g = Graph_tool(vertices=preds)
+f = Networkx(vertices=preds)
+
 g.causal()
+f.causal()
 #g.clustering()
 #g.filter_by('co-occurrence', threshold=0.01)
 #g.filter_by(method='redundancy', k=6)
 #g.merge_vertices(g.v_mapping['Disease'], g.v_mapping['Virus Diseases'])
-g.draw()
-#g.json()
+#g.draw()
+#f.draw()
+#g.json('g.json')
+#f.json('f.json')
 
 
-embedding = g.deep_walk()
+
+#for n in g.get_neighbors(g.get_vertex('Virus Diseases')):
+#    print(g.get_vertex(int(n)))
+for n in f.get_neighbors(f.get_vertex('Virus Diseases')):
+    print(f.get_vertex(n))
+
+#embedding = g.deep_walk()
+#embedding = f.deep_walk()
+f.filter_by('co-occurrence', threshold=0.05)
+f.draw()
+
 
 def cos(v1,v2):
     n1 = np.sqrt(np.dot(v1,v1))
     n2 = np.sqrt(np.dot(v2,v2))
     return np.dot(v1,v2)/(n1*n2)
 
-v1 = embedding[g.label2vertex['Procedures']]
-#v2 = embedding[g.v_mapping['Pharmaceutical Preparations']]
-#v2 = embedding[g.v_mapping['Antiviral Therapy']]
+v1 = embedding[g.get_vertex('Virus Diseases')]
+#v1 = embedding[f.get_vertex('Virus Diseases')]
+#v2 = embedding[g.get_vertex('Pharmaceutical Preparations')]
+#v2 = embedding[g.get_vertex('Antiviral Therapy')]
 
-print('Cosine similarity between node \'Procedures\' and:')
-#for key, value in embedding.items():
-    #print(g.verts_text[key],'-->',cos(v1,value))
+for key, value in embedding.items():
+    #print(g.get_vertex(key),'-->',cos(v1,value))
+    print(f.get_vertex(key),'-->',cos(v1,value))
 
