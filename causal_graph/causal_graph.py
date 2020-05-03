@@ -56,13 +56,18 @@ f.causal()
 
 #for n in g.get_neighbors(g.get_vertex('Virus Diseases')):
 #    print(g.get_vertex(int(n)))
-for n in f.get_neighbors(f.get_vertex('Virus Diseases')):
-    print(f.get_vertex(n))
+#for n in f.get_neighbors(f.get_vertex('Virus Diseases')):
+#    print(f.get_vertex(n))
 
 #embedding = g.deep_walk()
-#embedding = f.deep_walk()
-f.filter_by('co-occurrence', threshold=0.05)
-f.draw()
+embedding = f.deep_walk()
+#f.filter_by('co-occurrence', threshold=0.05)
+#clusters = g.k_means(elbow_range=(2,30))
+clusters = f.k_means(elbow_range=(2,30))
+for k,v in clusters.items():
+    print(k,':',v)
+
+#f.draw()
 
 
 def cos(v1,v2):
@@ -75,7 +80,7 @@ v1 = embedding[g.get_vertex('Virus Diseases')]
 #v2 = embedding[g.get_vertex('Pharmaceutical Preparations')]
 #v2 = embedding[g.get_vertex('Antiviral Therapy')]
 
-for key, value in embedding.items():
+#for key, value in embedding.items():
     #print(g.get_vertex(key),'-->',cos(v1,value))
-    print(f.get_vertex(key),'-->',cos(v1,value))
+    #print(f.get_vertex(key),'-->',cos(v1,value))
 
