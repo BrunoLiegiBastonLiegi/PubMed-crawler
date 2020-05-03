@@ -33,6 +33,7 @@ from graph_tool.all import graph_draw, graphviz_draw, minimize_blockmodel_dl, fr
 import networkx as nx
 import re, random
 import numpy as np
+from sklearn.cluster import KMeans
 from tensorflow.keras.models import Model
 from keras.preprocessing.sequence import skipgrams, make_sampling_table
 from tensorflow.keras.layers import Embedding, Input, Reshape, Dot, Dense
@@ -47,6 +48,8 @@ class Graph(ABC):
         self.vertex2label = None
         self.edge2label = None
         self.label2vertex = None
+        self.vertex2cluster = {}
+        self.embedding = {}
         self.bidir_preds = ['COEXISTS_WITH','ASSOCIATED_WITH']
         self.causal_preds = ['CAUSES','PREVENTS','DISRUPTS','INHIBITS','PREDISPOSES','PRODUCES']
         self.init(vertices)
@@ -189,7 +192,7 @@ class Graph(ABC):
         corpus = []
         vocab = self.get_vertices()
         edges_vocab = {} # using also edges with their relative label in the embedding
-        for i in range(30):
+        for i in range(3):
             #random.shuffle(vocab)
             for j in range(len(vocab)):
                 sent = self.random_walk(v=random.choice(vocab))
@@ -236,19 +239,40 @@ class Graph(ABC):
         model.fit(x=[target,context], y=np.asarray(labels), batch_size=32, epochs=1, validation_split=0.2, workers=12, use_multiprocessing=True)
 
         weights = embedding.get_weights()
-        #print(weights[0].shape)
-        self.embedding = {}
         vocab = vocab[:-len(edges_vocab.keys())]
         for n in vocab:
             self.embedding[n] = weights[0][n]
 
         return self.embedding
 
+    def k_means(self, n_clusters=None, elbow_range=(2,11)):
+        x = np.array([v for v in self.embedding.values()])
+        sse = {}
+        kmeans = {}
+        if n_clusters != None:
+            kmeans = KMeans(n_clusters=n_clusters).fit(x)
+        else:
+            for i in range(elbow_range[0], elbow_range[1]):
+                kmeans[i] = KMeans(n_clusters=i).fit(x)
+                print('K-Means with', i, 'clusters done')
+                sse[i] = kmeans[i].inertia_
+            plt.figure()
+            plt.plot(list(sse.keys()), list(sse.values()))
+            plt.xlabel("Number of clusters")
+            plt.ylabel("SSE")
+            plt.show()
+            n = int(input('Insert optimal number of clusters: '))
+            kmeans = kmeans[n]
+
+        for i in self.get_vertices():
+            self.vertex2cluster[i] = kmeans.labels_[i]
+        return self.vertex2cluster
+        
     def json(self, file='graph.json'):
         nodes = []
         links = []
         for v in self.get_vertices():
-            nodes.append({"id": self.get_vertex(v), "cluster": 1, "category": 'cat', "degree": self.get_degree(v)})
+            nodes.append({"id": self.get_vertex(v), "cluster": self.vertex2cluster[v], "category": 'cat', "degree": self.get_degree(v)})
         for e in self.get_edges():
             links.append({"source": self.get_vertex(e[0]), "target": self.get_vertex(e[1]), "label": e[2], "weight": e[3]})
         with open(file, 'w') as f:
