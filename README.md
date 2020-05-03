@@ -30,7 +30,7 @@ multiprocessing
 
 ## Preprocessing 
 
-`preprocessor.py` implements a `Preprocessor` object that is used to load data from the xml generated at the previous step, or simply to preprocess raw text. It splits the text in paragraphs and sentences and then performs tokenization (with regex), stop words removal and lemmatization (with [nltk](https://www.nltk.org/)). Again `multiprocessing` is used to parallelize the task across the available threads.
+`preprocessor.py` implements a `Preprocessor` object that is used to load data from the xml generated at the previous step, or simply to preprocess raw text. Text is splitted in paragraphs and sentences, optionally also tokenization (with regex), stop words removal and lemmatization (with [nltk](https://www.nltk.org/)) can be performed. Again `multiprocessing` is used to parallelize the task across the available threads.
 
 ### Requirements
 
@@ -78,7 +78,40 @@ SemRep
 GNU Parallel
 graph_tool
 Beautifulsoup
+keras
+matplotlib
+numpy
+sklearn
 ```
+
+### Usage
+
+The graph can be created by passing a list of `Vertex` objects
+
+```
+from graph import Vertex, Networkx, Graph_tool
+
+vertex = Vertex('Source', ['CAUSES', 'COEXIST_WITH'], ['Target 1', 'Target 2'])
+g = Networkx(vertices=[vertex])
+```
+
+or
+
+```
+g = Graph_tool(vertices=[vertex])
+```
+
+To keep only causal relations, simply call `g.causal()`
+
+Node embedding and clustering can be performed (note that embedding is required for clustering)
+
+```
+embedding = g.deep_walk()
+clustering = g.k_means(elbow_range=(2,10))
+```
+
+finally call `g.draw()` to visulaize the graph.
+
 
 ## Team
 - Andrea Papaluca   (ANU, PhD applicant).
