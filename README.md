@@ -70,6 +70,7 @@ Then, the file containing predications is parsed to extract all the subject-pred
 Here an example about covid-19
 
 <img src="causal_graph/graph_example.png" width="900">
+<img src="causal_graph/image-2.png" width="900">
 
 ### Requirements
 
