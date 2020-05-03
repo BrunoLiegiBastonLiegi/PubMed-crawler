@@ -1,6 +1,18 @@
-# PubMed Crawler
+# Medical Knowledge Discovery and Representation
 
-Python project for retrieval and processing of medical articles from the PubMed database.
+The rate at which machine-based and human-generated data is created has increased exponentially. However the majority of them is in unstructured form, limiting the applicability of algorithms of supervised machine learning. Unsupervised algorithms, on the other hand, play a crucial role in the analysis of unstructured, unlabeled data and it is especially true when it comes to text analysis.
+
+One of the areas that is currently undergoing a rapid development is medical literature knowledge discovery. Learning the features of an unstructured text and summarizing them in a structured graph, usually referred to as “Knowledge Graph”, provides the means for not only easier understanding of the medical knowledge but also allows for extracting relations unknown beforehand.
+
+## Covid-19
+The recent outbreak of COVID-19 sparked tremendous response by scientific and medical community.
+This resulted in a rapid growth of research and clinical studies. However, making sense of this gamut of
+scientific publications may be hindered by inabilities to access and analyze their free-form text contents
+from the perspectives of information relevance and reliability.  
+ 
+The project consists of the following key milestone to address this accessibility bottleneck related to the
+rapidly evolving body of COVID-19 research:  A causal graph constructing application to extract medical
+knowledge from available academic biomedical and engineering literature.
 
 ## Retrieving articles and storing locally
 
@@ -47,13 +59,13 @@ only sentence splitting is performed by default.
 
 ## Causal graph
 
-Here I use [SemRep](https://github.com/lhncbc/SemRep) to extract predications from the abstracts collected with `crawler.py`. The bash script `predicates.sh` takes as argument a raw text file with one sentence per line (can be generated using `Preprocessor` for example)
+Here we use [SemRep](https://github.com/lhncbc/SemRep) to extract predications from the abstracts collected with `crawler.py`. The bash script `predicates.sh` takes as argument a raw text file with one sentence per line (can be generated using `Preprocessor` for example)
 ```
 sh predicates.sh example.txt
 ```
 and generates the `predicates.xml` file containing all the predications found by SemRep. The task is splitted in batches of 100 sentences and runs parallel thanks to [GNU Parallel](https://www.gnu.org/software/parallel/).
 
-`causal_graph.py` then parses the predications file generated and extracts all the subject-predicate-object tuples. From them selects only the causal ones and build the graph using the `Graph` object implemented in `graph.py`, based on the python module [graph_tool](https://graph-tool.skewed.de/).
+Then, the file containing predications is parsed to extract all the subject-predicate-object tuples and the graph is built using `Graph` object implemented in `graph.py` (based on python modules [graph_tool](https://graph-tool.skewed.de/) and [networkx](https://github.com/networkx/networkx)).
 
 Here an example about covid-19
 
@@ -67,3 +79,12 @@ GNU Parallel
 graph_tool
 Beautifulsoup
 ```
+
+## Team
+- Andrea Papaluca   (ANU, PhD applicant).
+
+- Artem Lenskiy     (ANU, Research Fellow).
+
+- Daniel Krefl      (Lausanne U., Assistant Professor)
+
+- Hanna Suominen    (ANU, Associate Professor)

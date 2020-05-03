@@ -192,7 +192,7 @@ class Graph(ABC):
         corpus = []
         vocab = self.get_vertices()
         edges_vocab = {} # using also edges with their relative label in the embedding
-        for i in range(3):
+        for i in range(80):
             #random.shuffle(vocab)
             for j in range(len(vocab)):
                 sent = self.random_walk(v=random.choice(vocab))
@@ -236,7 +236,7 @@ class Graph(ABC):
         model = Model(inputs=[input_target, input_context], outputs=output)
         model.compile(loss='binary_crossentropy', optimizer='rmsprop')
         # training
-        model.fit(x=[target,context], y=np.asarray(labels), batch_size=32, epochs=1, validation_split=0.2, workers=12, use_multiprocessing=True)
+        model.fit(x=[target,context], y=np.asarray(labels), batch_size=32, epochs=10, validation_split=0.2, workers=12, use_multiprocessing=True)
 
         weights = embedding.get_weights()
         vocab = vocab[:-len(edges_vocab.keys())]
