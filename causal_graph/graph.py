@@ -31,7 +31,7 @@ class Edge:
 import graph_tool as gt
 from graph_tool.all import graph_draw, graphviz_draw, minimize_blockmodel_dl, fruchterman_reingold_layout, arf_layout
 import networkx as nx
-import re, random
+import re, random, json
 import numpy as np
 from sklearn.cluster import KMeans
 from tensorflow.keras.models import Model
@@ -39,6 +39,7 @@ from keras.preprocessing.sequence import skipgrams, make_sampling_table
 from tensorflow.keras.layers import Embedding, Input, Reshape, Dot, Dense
 from abc import ABC, abstractmethod
 import matplotlib.pyplot as plt
+from multiprocessing import Pool
 
 
 class Graph(ABC):
@@ -107,30 +108,26 @@ class Graph(ABC):
             if self.get_degree(v) < 1:
                 vl.append(v)
         self.remove_vertices(vl)  
-    
+
+    def degree(self, d=2):
+        del_list = []
+        for v in self.get_vertices():
+            if self.get_degree(v) < d:
+                del_list.append(v)
+        self.remove_vertices(del_list)
+        self.clean()
+        
     def redundancy(self, k=2): # to be fixed!
-        redundancy_map = self.g.new_edge_property("bool") # have to use filtering cause removal was causing core dumped
-        for v in self.g.vertices():
-            dict = {}
-            for e in v.out_edges():
-                t = e.target()
-                try:
-                    dict[self.vertex2label[t]].append(e)
-                except:
-                    dict[self.vertex2label[t]] = [e]
-            for i in dict.values():
-                if len(i) < k:
-                    for j in i:
-                        redundancy_map[j] = False
-                else:
-                    for j in i:
-                        redundancy_map[j] = True
-                        
-        self.g.set_edge_filter(redundancy_map)
+        del_list = []
+        for e in self.get_edges():
+            if e[3] < k:
+                del_list.append(e)
+
+        self.remove_edges(del_list)
         self.clean()
 
     def filter_by(self, method, **kwargs):
-        assert method in ['causal','co-occurrence','word_embedding','redundancy'], 'Unsupported pruning method'
+        assert method in ['degree','causal','co-occurrence','word_embedding','redundancy'], 'Unsupported pruning method'
         if method == 'causal':
             return self.causal()
         if method == 'co-occurrence':
@@ -139,6 +136,8 @@ class Graph(ABC):
             return self.word_embedding(**kwargs)
         if method == 'redundancy':
             return self.redundancy(**kwargs)
+        if method == 'degree':
+            return self.degree(**kwargs)
             
     def causal(self):
         del_list = []
@@ -163,7 +162,7 @@ class Graph(ABC):
         self.remove_edges(del_list)
         self.clean()
 
-    def random_walk(self, v=None, length=20):
+    def random_walk(self, v=None, length=20, with_edges=True):
         if v == None:
             v = random.choice(self.get_vertices())
         #start = v
@@ -181,38 +180,69 @@ class Graph(ABC):
             '''
             if len(neighbors) != 0:
                 random.shuffle(neighbors)
-                [walk.append(i) for i in random.choice(neighbors)]
+                if with_edges == True:
+                    [walk.append(i) for i in random.choice(neighbors)]
+                else:
+                    walk.append(random.choice(neighbors)[1])
             else:
                 #walk.append(start)
                 break
         return walk
 
-    def deep_walk(self, walk_length=20, window=5, embedding_dim=100):
-        # preparing vacobulary and corpus
+    def skipgrams(self, sent, window_size, vocab_size, negative_samples=5):
+        couples = []
+        labels = []
+        for i in range(len(sent)-1):
+            window = [sent[j] for j in range(i, min(i+window_size, len(sent)))]
+            for v in window[1:]:
+                couples.append([window[0],v])
+                labels.append(1)
+                for k in range(negative_samples):
+                    r = random.randint(0, vocab_size-1)
+                    while r in window:
+                        r = random.randint(0, vocab_size-1)
+                    couples.append([window[0],r])
+                    labels.append(0)
+        return (couples, labels)
+            
+
+    def deep_walk(self, walk_length=20, window=3, walks_per_node=10, embedding_dim=100, with_edges=True):
+        # preparing vocabulary and corpus
         corpus = []
         vocab = self.get_vertices()
-        edges_vocab = {} # using also edges with their relative label in the embedding
-        for i in range(80):
+        edges_vocab = {e : int(len(vocab)+i) for i,e in enumerate(self.causal_preds+self.bidir_preds)} # using also edges (only causal ones) with their relative label in the embedding
+        for n in range(walks_per_node):
+            print('Generating Walks:', int(n/walks_per_node*100), '%\r', end='')
             #random.shuffle(vocab)
-            for j in range(len(vocab)):
-                sent = self.random_walk(v=random.choice(vocab))
-                for i, e in enumerate(sent[1::2]):
-                    try:
-                        sent[2*i+1] = edges_vocab[e]
-                    except:
-                        edges_vocab[e] = len(vocab) + len(edges_vocab.keys())
-                        sent[2*i+1] = edges_vocab[e]
-                corpus.append(sent)
-        for val in edges_vocab.values():
-            vocab.append(val)
+            starts = [random.choice(vocab) for j in range(len(vocab))]
+            p = Pool(processes=1)
+            sents = p.map(self.random_walk, starts)
+            p.close()
+            p.join()
+            for s in sents:
+                if with_edges == True:
+                    for i, e in enumerate(s[1::2]):
+                        try:
+                            s[2*i+1] = edges_vocab[e]
+                        except:
+                            edges_vocab[e] = len(vocab) + len(edges_vocab.keys())
+                            s[2*i+1] = edges_vocab[e]
+                corpus.append(s)
+        print('Generating Walks:', 100, '% ')
 
+        if with_edges == True:
+            for val in edges_vocab.values():
+                vocab.append(val)
+        
         # skipgram with negative sampling
+        # usually the training samples are generated depending on the frequency of a particular word in the corpus, for example the word 'the' will appear a lot in a text and therefore it will have small probability to be used for a training sample.
+        # in our case however, the edges are the ones that will appear frequently in the corpus but we don't want to get rid of them since we are trying to take them into account for embedding and compare the result with edge-independent embedding
         vocab_size = len(vocab)
         table = make_sampling_table(vocab_size)
         couples = []
         labels = []
         for sent in corpus:
-            tmp1, tmp2 = skipgrams(sent, vocab_size, window_size=window)
+            tmp1, tmp2 = self.skipgrams(sent, window, vocab_size)
             couples += tmp1
             labels += tmp2
             
@@ -236,10 +266,11 @@ class Graph(ABC):
         model = Model(inputs=[input_target, input_context], outputs=output)
         model.compile(loss='binary_crossentropy', optimizer='rmsprop')
         # training
-        model.fit(x=[target,context], y=np.asarray(labels), batch_size=32, epochs=10, validation_split=0.2, workers=12, use_multiprocessing=True)
+        model.fit(x=[target,context], y=np.asarray(labels), batch_size=32, epochs=1, validation_split=0.2, workers=12, use_multiprocessing=True)
 
         weights = embedding.get_weights()
-        vocab = vocab[:-len(edges_vocab.keys())]
+        if with_edges == True:
+            vocab = vocab[:-len(edges_vocab.keys())]
         for n in vocab:
             self.embedding[n] = weights[0][n]
 
@@ -265,29 +296,30 @@ class Graph(ABC):
             kmeans = kmeans[n]
 
         for i in self.get_vertices():
-            self.vertex2cluster[i] = kmeans.labels_[i]
+            self.vertex2cluster[i] = int(kmeans.labels_[i])
         return self.vertex2cluster
         
     def json(self, file='graph.json'):
         nodes = []
         links = []
         for v in self.get_vertices():
-            nodes.append({"id": self.get_vertex(v), "cluster": self.vertex2cluster[v], "category": 'cat', "degree": self.get_degree(v)})
+            #nodes.append(json.dumps({'id': self.get_vertex(v), 'cluster': self.vertex2cluster[v], 'category': 'cat', 'degree': self.get_degree(v)}))
+            nodes.append(json.dumps({'id': self.get_vertex(v), 'cluster': 0, 'category': 'cat', 'degree': self.get_degree(v)}))
         for e in self.get_edges():
-            links.append({"source": self.get_vertex(e[0]), "target": self.get_vertex(e[1]), "label": e[2], "weight": e[3]})
+            links.append(json.dumps({'source': self.get_vertex(e[0]), 'target': self.get_vertex(e[1]), 'label': e[2], 'weight': e[3]}))
         with open(file, 'w') as f:
             f.write('{\n\t\"nodes\": [\n')
             for n in range(len(nodes)):
                 f.write('\t\t')
-                f.write(str(nodes[n]))
+                f.write(nodes[n])
                 if n != len(nodes) - 1:
                     f.write(',')
                 f.write('\n')
             f.write('\t],\n\t\"links\": [\n')
             for l in range(len(links)):
                 f.write('\t\t')
-                f.write(str(links[l]))
-                if n != len(links) - 1:
+                f.write(links[l])
+                if l != len(links) - 1:
                     f.write(',')
                 f.write('\n')
             f.write('\n\t]\n}')
@@ -582,11 +614,14 @@ class Networkx(Graph):
         for e in el:
             self.g.remove_edge(e[0], e[1], key=e[2])
         
-    def draw(self):
+    def draw(self, **kwargs):
         plt.subplot()
         #options = {
          #   'labels' : self.vertex2label, 
           #  'arrows' : True
         #}
-        nx.draw_networkx(self.g, labels=self.vertex2label, arrows=True)
+        node_labels = {v:self.get_vertex(v) for v in self.get_vertices()}
+        edge_labels = {(e[0], e[1]): 'w = '+str(e[3]) for e in self.get_edges()}
+        nx.draw_networkx(self.g, labels=node_labels, arrows=True, **kwargs)
+        nx.draw_networkx_edge_labels(self.g, edge_labels=edge_labels,**kwargs)
         plt.show()
