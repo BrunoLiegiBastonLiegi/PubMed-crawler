@@ -59,7 +59,7 @@ f.causal()
 #f.degree(d=3)
 #g.degree(d=3)
 #f.filter_by('degree', d=3)
-f.draw()
+#f.draw()
 #g.draw()
 #g.json('g.json')
 #f.json('graph.json')
@@ -69,9 +69,9 @@ f.draw()
 #    print(g.get_vertex(int(n)))
 #for n in f.get_neighbors(f.get_vertex('Virus Diseases')):
 #    print(f.get_vertex(n))
-'''
+
 #embedding = g.deep_walk(walks_per_node=60)
-embedding = f.deep_walk(walks_per_node=40)
+embedding = f.deep_walk(walks_per_node=20)
 embedding = np.array([v for v in embedding.values()])
 pca = PCA(n_components=50)
 pca.fit(embedding)
@@ -85,7 +85,7 @@ plt.show()
 clusters = f.k_means(elbow_range=(2,30))
 #for k,v in clusters.items():
 #    print(k,':',v)
-'''
+
 f.json('graph.json')
 #g.json('graph.json')
 

@@ -40,6 +40,7 @@ from tensorflow.keras.layers import Embedding, Input, Reshape, Dot, Dense
 from abc import ABC, abstractmethod
 import matplotlib.pyplot as plt
 from multiprocessing import Pool
+from itertools import repeat
 
 
 class Graph(ABC):
@@ -162,7 +163,7 @@ class Graph(ABC):
         self.remove_edges(del_list)
         self.clean()
 
-    def random_walk(self, v=None, length=20, with_edges=True):
+    def random_walk(self, v=None, length=20, with_edges=False):
         if v == None:
             v = random.choice(self.get_vertices())
         #start = v
@@ -206,7 +207,7 @@ class Graph(ABC):
         return (couples, labels)
             
 
-    def deep_walk(self, walk_length=20, window=3, walks_per_node=10, embedding_dim=100, with_edges=True):
+    def deep_walk(self, walk_length=20, window=10, walks_per_node=10, embedding_dim=100, with_edges=False):
         # preparing vocabulary and corpus
         corpus = []
         vocab = self.get_vertices()
@@ -215,8 +216,8 @@ class Graph(ABC):
             print('Generating Walks:', int(n/walks_per_node*100), '%\r', end='')
             #random.shuffle(vocab)
             starts = [random.choice(vocab) for j in range(len(vocab))]
-            p = Pool(processes=1)
-            sents = p.map(self.random_walk, starts)
+            p = Pool(processes=12)
+            sents = p.starmap(self.random_walk, zip(starts, repeat(walk_length), repeat(with_edges)))
             p.close()
             p.join()
             for s in sents:
@@ -242,7 +243,10 @@ class Graph(ABC):
         couples = []
         labels = []
         for sent in corpus:
-            tmp1, tmp2 = self.skipgrams(sent, window, vocab_size)
+            if with_edges == True:
+                tmp1, tmp2 = self.skipgrams(sent, window, vocab_size)
+            else :
+                tmp1, tmp2 = skipgrams(sent, vocab_size, window_size=window)
             couples += tmp1
             labels += tmp2
             
