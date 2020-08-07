@@ -2,7 +2,15 @@
 
 *.txt
 
+*.bak
+
+*.png
+
 *.json
+
+causal_graph/lazega
+
+causal_graph/noordin_terrorists
 
 labeled-data/
 

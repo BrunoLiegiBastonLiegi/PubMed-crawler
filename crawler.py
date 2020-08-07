@@ -2,11 +2,13 @@ import requests as req
 from bs4 import BeautifulSoup
 from article import Article
 from multiprocessing import Process, Value, Lock, cpu_count
-import time, os
+import time, os, sys
 
 
-query = ['covid-19']
-logic_clause = '  '
+#query = ['acetone', 'covid-19']
+#logic_clause = ' OR '
+query = sys.argv[1:]
+
 retstart = 0
 retmax = 100000
 idlist = []
@@ -16,7 +18,7 @@ print('--> Searching Pubmed')
 while True:
 
     #params passed to esearch
-    payload = {'db':'pubmed', 'term':logic_clause.join(query), 'retmax':retmax, 'retstart':retstart}
+    payload = {'db':'pubmed', 'term':' '.join(query), 'retmax':retmax, 'retstart':retstart}
 
     #esearch
     r = req.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi', params=payload)

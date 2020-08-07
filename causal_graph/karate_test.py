@@ -1,22 +1,37 @@
 from graph import Graph, Vertex, Networkx, Graph_tool
 import networkx as nx
 import matplotlib.pyplot as plt
-
+import sys, random
+import numpy as np
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 
 G = nx.karate_club_graph()
 nx.draw(G, with_labels=True)
+pos = nx.drawing.layout.spring_layout(G)
 plt.show()
 
-vertices = []
-for e in G.edges():
-    vertices.append(Vertex(str(e[0]), [' '], [str(e[1])]))
+g = Networkx()
+for n in G.nodes:
+    [g.add_edge('COEXIST_WITH',n,i) for i in G.neighbors(n)]
+nx.draw_networkx(g.g, pos=pos, with_labels=True)
+plt.show()
 
-g = Graph_tool(vertices=vertices)
-#g = Networkx(vertices=vertices)
-g.draw()
 
-embedding = g.deep_walk()
-clusters = g.k_means(elbow_range=(2,30))
+embedding = g.deep_walk(walk_length=80, window=5, walks_per_node=10, embedding_dim=128, with_edges=True)
+clusters = g.k_means(n_clusters=2)
+colors = [c[1] for c in sorted(clusters.items())]
 
-for k,v in clusters.items():
-    print(k,':',v)
+embedding = np.array([v for v in embedding.values()])
+pca = PCA(n_components=2)
+pca.fit(embedding)
+embedding = pca.transform(embedding)
+#embedding = TSNE(n_components=2).fit_transform(embedding)
+fig, ax = plt.subplots(figsize=(10,10))
+ax.scatter(x=embedding[:,0], y=embedding[:,1])
+for i in range(len(embedding)):
+    ax.annotate(i, (embedding[i][0], embedding[i][1]))
+plt.show()
+    
+nx.draw_networkx(g.g, pos=pos, node_color=colors, cmap=plt.cm.tab20, with_labels=True)
+plt.show()

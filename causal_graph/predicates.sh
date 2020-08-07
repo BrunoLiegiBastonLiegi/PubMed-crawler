@@ -45,7 +45,7 @@ do
 	xmllint --noout $i
 	valid=$?
 	c=$(($c+1))
-	if [ $c -gt 10 ];then
+	if [ $c -gt 5 ];then
 	    break
 	fi
     done
