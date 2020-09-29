@@ -111,6 +111,10 @@ class Graph(ABC):
     def find_path(self, s, t):
         pass
 
+    @abstractmethod
+    def louvain_communities(self):
+        pass
+
     def get_degree(self, v, dir='all'):
         assert dir in ['in', 'out', 'all'], 'Unsupported direction'
         deg = 0
@@ -156,7 +160,17 @@ class Graph(ABC):
         for v in self.get_vertices():
             if self.get_degree(v) < 1:
                 vl.append(v)
-        self.remove_vertices(vl)  
+        self.remove_vertices(vl)
+
+    def remove_disconnected_components(self, th=10):
+        g = self.g.to_undirected()
+        comp = sorted(nx.connected_components(g), key = len, reverse=True)
+        del_list = []
+        for i in comp:
+            if len(i) < th:
+                for j in i:
+                    del_list.append(j)
+        self.remove_vertices(del_list)
         
     def degree(self, d=10):
         del_list = []
@@ -248,42 +262,7 @@ class Graph(ABC):
                 #walk.append(start)
                 break
         return walk
-    '''
-    def skipgrams(self, sent, window_size, vocab_size, negative_samples=5):
-        couples = []
-        labels = []
-        #print(sent)
-        for i in range(len(sent)-1):
-            window = [sent[j] for j in range(i, min(i+window_size, len(sent)))]
-            #print(window)
-=======
-
-    def skipgrams(self, sent, window_size, vocab_size, negative_samples=5):
-        couples = []
-        labels = []
-        for i in range(len(sent)-1):
-            window = [sent[j] for j in range(i, min(i+window_size, len(sent)))]
->>>>>>> 191434fbaf47827975d943eddf20dffe2aa69b1e
-            for v in window[1:]:
-                couples.append([window[0],v])
-                labels.append(1)
-                for k in range(negative_samples):
-                    r = random.randint(0, vocab_size-1)
-<<<<<<< HEAD
-                    counter = 0
-                    while r in window:
-                        r = random.randint(0, vocab_size-1)
-                        counter +=1
-                        if counter > vocab_size:
-                            r = False
-                            break
-                    if r:
-                        couples.append([window[0],r])
-                        labels.append(0)
-        tmp = list(zip(couples,labels))
-        random.shuffle(tmp)
-        return list(zip(*tmp))#(couples, labels)
-       '''
+ 
     def skipgrams(self, sent, window_size, vocab, negative_samples=1):
         couples = []
         labels = []
@@ -323,7 +302,6 @@ class Graph(ABC):
         if with_edges :
             window = 2*window
         #edges_vocab = {e : int(len(vocab)+i) for i,e in enumerate(self.causal_preds+self.bidir_preds)} # using also edges (only causal ones) with their relative label in the embedding
-        edges_vocab = {e : int(len(vocab)+i) for i,e in enumerate(self.causal_preds+self.bidir_preds)} # using also edges (only causal ones) with their relative label in the embedding
         for n in range(walks_per_node):
             print('Generating Walks:', int(n/walks_per_node*100), '%\r', end='')
             #random.shuffle(vocab)
@@ -374,16 +352,6 @@ class Graph(ABC):
             c += 1
             print('Generating skipgrams: ', int(c/len(corpus)*100), '%\r', end='')
         print('Generating skipgrams: ', 100, '%\r', end='\n')
-        table = make_sampling_table(vocab_size)
-        couples = []
-        labels = []
-        for sent in corpus:
-            if with_edges == True:
-                tmp1, tmp2 = self.skipgrams(sent, window, vocab_size)
-            else :
-                tmp1, tmp2 = skipgrams(sent, vocab_size, window_size=window)
-            couples += tmp1
-            labels += tmp2
             
         target, context = zip(*couples)  # unpack couples in two lists: the list of targets and the list of the relative contexts
         target = np.array(target)
@@ -415,14 +383,7 @@ class Graph(ABC):
                 self.embedding[self.get_vertex(n)] = weights[0][n]
             else:
                 self.embedding[edges_vocab[n]] = weights[0][n]
-        model.fit(x=[target,context], y=np.asarray(labels), batch_size=32, epochs=1, validation_split=0.2, workers=12, use_multiprocessing=True)
-
-        weights = embedding.get_weights()
-        if with_edges == True:
-            vocab = vocab[:-len(edges_vocab.keys())]
-        for n in vocab:
-            self.embedding[n] = weights[0][n]
-
+        
         return self.embedding
 
     def k_means(self, n_clusters=None, elbow_range=(2,11)):
@@ -448,6 +409,12 @@ class Graph(ABC):
         for k in self.embedding.keys():
             self.vertex2cluster[k] = int(kmeans.labels_[i])
             i += 1
+        return self.vertex2cluster
+
+    def agglomerative_clustering(self, n_cluster):
+        clusters = AgglomerativeClustering(n_cluster).fit(list(self.embedding.values())).labels_
+        for i,k in enumerate(self.embedding.keys()):
+            self.vertex2cluster[k] = clusters[i]
         return self.vertex2cluster
         
     def json(self, file='graph.json'):
@@ -747,6 +714,13 @@ class Networkx(Graph):
             [neigh.append(n) for n in self.g.neighbors(v) ]   
             [neigh.append(n) for n in self.g.predecessors(v) ]
             return neigh
+
+    def louvain_communities(self):
+        g = self.g.to_undirected()
+        partition = community_louvain.best_partition(g)
+        for k,v in partition.items():
+            self.vertex2cluster[self.get_vertex(k)] = v
+        return self.vertex2cluster
         
     def remove_vertices(self, vl):
         self.g.remove_nodes_from(vl)  
