@@ -25,8 +25,12 @@ v.append(Vertex('11',['PREVENTS','PREVENTS'],['10','7']))
 nx.draw_networkx(g.g, with_labels=True)
 plt.show()
 
+<<<<<<< HEAD
 embedding = g.deep_walk(walk_length=10, window=5, walks_per_node=10, embedding_dim=128, with_edges=True)
 #embedding = g.deep_walk(walk_length=10, window=5, walks_per_node=10, embedding_dim=128, with_edges=False)
+=======
+embedding = g.deep_walk(walk_length=50, window=10, walks_per_node=10, embedding_dim=128, with_edges=False)
+>>>>>>> 191434fbaf47827975d943eddf20dffe2aa69b1e
 clusters = g.k_means(n_clusters=3)
 
 
@@ -34,10 +38,20 @@ embedding = np.array([v for v in embedding.values()])
 pca = PCA(n_components=2)
 pca.fit(embedding)
 embedding = pca.transform(embedding)
+<<<<<<< HEAD
 fig, axs = plt.subplots(1,2, figsize=(20,10))
 axs[0].scatter(x=embedding[:,0], y=embedding[:,1])
 for i in range(len(embedding)):
     axs[0].annotate(i, (embedding[i][0], embedding[i][1]))
 
 nx.draw_networkx(g.g, ax=axs[1], node_color=[c for c in clusters.values()], cmap=plt.cm.get_cmap('cool'), with_labels=True)
+=======
+fig, ax = plt.subplots(figsize=(10,10))
+ax.scatter(x=embedding[:,0], y=embedding[:,1])
+for i in range(len(embedding)):
+    ax.annotate(i, (embedding[i][0], embedding[i][1]))
+plt.show()
+
+nx.draw_networkx(g.g, node_color=[c for c in clusters.values()], cmap=plt.cm.tab20, with_labels=True)
+>>>>>>> 191434fbaf47827975d943eddf20dffe2aa69b1e
 plt.show()

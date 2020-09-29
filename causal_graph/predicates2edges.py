@@ -15,24 +15,25 @@ with open(sys.argv[1]) as f:
     for sent in soup:
         predication = sent.Predication
         if predication != None:
-            pred = predication.Predicate['type']
-            if True:#pred in causePredicates or pred in twoDirectionalPredicates:
+            r = predication.Predicate['type']
+            if r in causePredicates or r in twoDirectionalPredicates:
                 subj = sent.find(id=predication.Subject['entityID'])
                 obj = sent.find(id=predication.Object['entityID'])
                 dict = {}
                 try:
-                    s = subj['name'].replace(':','')
+                    h = subj['name'].replace(':','')
                     #s = subj['text'].replace(':','')
                 except:
-                    s = subj['entrezName'].replace(':','')
+                    h = subj['entrezName'].replace(':','')
                     #s = subj['text'].replace(':','')
                 try:
-                    o = obj['name'].replace(':','')
+                    t = obj['name'].replace(':','')
                     #o = [obj['text'].replace(':','')]
                 except:
-                    o = obj['entrezName'].replace(':','')
+                    t = obj['entrezName'].replace(':','')
                     #o = [obj['text'].replace(':','')]
-                preds.append([s, o, pred])
+                    
+                preds.append([h, t, r])
         i += 1
         print(i, '/', len(soup), '\r', end='')
 

@@ -12,6 +12,8 @@ causal_graph/lazega
 
 causal_graph/noordin_terrorists
 
+*.json
+
 labeled-data/
 
 keywords-extraction/

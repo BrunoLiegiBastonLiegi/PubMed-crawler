@@ -45,6 +45,7 @@ from scipy.special import comb
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
+
 class Graph(ABC):
 
     def __init__(self, vertices=None):
@@ -105,14 +106,18 @@ class Graph(ABC):
     @abstractmethod
     def draw_embedding(self):
         pass
-    
+
+    @abstractmethod
+    def find_path(self, s, t):
+        pass
+
     def get_degree(self, v, dir='all'):
         assert dir in ['in', 'out', 'all'], 'Unsupported direction'
         deg = 0
         for e in self.get_edges(v, dir=dir):
             deg += e[3]
         return deg
-
+    
     def to_unoriented(self):
         for e in self.get_edges():
             if e[2] not in self.bidir_preds:
@@ -160,6 +165,14 @@ class Graph(ABC):
             for n in self.get_neighbors(v):
                 deg += self.get_degree(n)
             if deg < d :
+                del_list.append(v)
+        self.remove_vertices(del_list)
+        self.clean()
+
+    def degree(self, d=2):
+        del_list = []
+        for v in self.get_vertices():
+            if self.get_degree(v) < d:
                 del_list.append(v)
         self.remove_vertices(del_list)
         self.clean()
@@ -243,11 +256,20 @@ class Graph(ABC):
         for i in range(len(sent)-1):
             window = [sent[j] for j in range(i, min(i+window_size, len(sent)))]
             #print(window)
+=======
+
+    def skipgrams(self, sent, window_size, vocab_size, negative_samples=5):
+        couples = []
+        labels = []
+        for i in range(len(sent)-1):
+            window = [sent[j] for j in range(i, min(i+window_size, len(sent)))]
+>>>>>>> 191434fbaf47827975d943eddf20dffe2aa69b1e
             for v in window[1:]:
                 couples.append([window[0],v])
                 labels.append(1)
                 for k in range(negative_samples):
                     r = random.randint(0, vocab_size-1)
+<<<<<<< HEAD
                     counter = 0
                     while r in window:
                         r = random.randint(0, vocab_size-1)
@@ -301,6 +323,7 @@ class Graph(ABC):
         if with_edges :
             window = 2*window
         #edges_vocab = {e : int(len(vocab)+i) for i,e in enumerate(self.causal_preds+self.bidir_preds)} # using also edges (only causal ones) with their relative label in the embedding
+        edges_vocab = {e : int(len(vocab)+i) for i,e in enumerate(self.causal_preds+self.bidir_preds)} # using also edges (only causal ones) with their relative label in the embedding
         for n in range(walks_per_node):
             print('Generating Walks:', int(n/walks_per_node*100), '%\r', end='')
             #random.shuffle(vocab)
@@ -319,6 +342,7 @@ class Graph(ABC):
                             s[2*i+1] = edges_vocab[e]
                 corpus.append(s)
         print('Generating Walks:', 100, '% ')
+
         if with_edges == True:
             for val in edges_vocab.values():
                 vocab.append(val)
@@ -350,6 +374,17 @@ class Graph(ABC):
             c += 1
             print('Generating skipgrams: ', int(c/len(corpus)*100), '%\r', end='')
         print('Generating skipgrams: ', 100, '%\r', end='\n')
+        table = make_sampling_table(vocab_size)
+        couples = []
+        labels = []
+        for sent in corpus:
+            if with_edges == True:
+                tmp1, tmp2 = self.skipgrams(sent, window, vocab_size)
+            else :
+                tmp1, tmp2 = skipgrams(sent, vocab_size, window_size=window)
+            couples += tmp1
+            labels += tmp2
+            
         target, context = zip(*couples)  # unpack couples in two lists: the list of targets and the list of the relative contexts
         target = np.array(target)
         context = np.array(context)
@@ -380,6 +415,13 @@ class Graph(ABC):
                 self.embedding[self.get_vertex(n)] = weights[0][n]
             else:
                 self.embedding[edges_vocab[n]] = weights[0][n]
+        model.fit(x=[target,context], y=np.asarray(labels), batch_size=32, epochs=1, validation_split=0.2, workers=12, use_multiprocessing=True)
+
+        weights = embedding.get_weights()
+        if with_edges == True:
+            vocab = vocab[:-len(edges_vocab.keys())]
+        for n in vocab:
+            self.embedding[n] = weights[0][n]
 
         return self.embedding
 
@@ -432,8 +474,6 @@ class Graph(ABC):
                     f.write(',')
                 f.write('\n')
             f.write('\n\t]\n}')
-
-        
 
 
 
@@ -783,6 +823,17 @@ class Networkx(Graph):
         nx.draw_networkx_edge_labels(self.g, pos=pos, edge_labels=e_lab, font_size=8)
         plt.show()
 
+    def find_path(self, s, t, cut=20):
+        if type(s) == str:
+            self.get_vertex(s)
+        if type(t) == str:
+            self.get_vertex(t)
+        try:
+            paths = list(nx.all_simple_paths(self.g, s, t, cutoff=cut))
+            return [[self.get_vertex(v) for v in p] for p in paths]
+        except:
+            return False
+        
     def draw_embedding(self, annotations=None):
         evecs = np.array([v for v in self.embedding.values()])
         
@@ -1116,3 +1167,4 @@ def similarity(g, clusters):
                 sim += len(ni.intersection(nj)) / len(ni.union(nj))
     return sim / len(verts)
     
+
